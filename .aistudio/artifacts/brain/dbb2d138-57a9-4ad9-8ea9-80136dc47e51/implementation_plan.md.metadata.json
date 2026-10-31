@@ -1,6 +1,6 @@
 {
-  "summary":  "Architectural plan for Quartet Clash: Single Player with Bot Count selection, Firebase Firestore Online Multiplayer with shareable Room Codes and Pre-Game Lobby, Bot replacement strictly for disconnected/quitting players, 15-second least-count auto-pass, bot stall fix (Chloe turn passing), and strictly fixed center status tile size.",
-  "updatedAt":  "2026-10-31T11:16:55.730413167Z",
+  "summary":  "Implementation plan for creating Find The Thief from the uploaded reference implementation.",
+  "updatedAt":  "2026-10-31T17:59:40.516481518Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

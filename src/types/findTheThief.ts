@@ -27,10 +27,8 @@ export interface ThiefPlayer {
   score: number;
   roleId: CourtRoleId | null;
   isBot: boolean;
-  avatar: string;
+  avatar?: string;
 }
-
-export type GameStateStatus = 'LOBBY' | 'ROLES_ASSIGNED' | 'SEEKING' | 'ROUND_END' | 'GAME_OVER';
 
 export interface GameLog {
   id: string;
