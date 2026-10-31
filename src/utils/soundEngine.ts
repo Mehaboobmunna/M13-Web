@@ -157,6 +157,91 @@ class SoundEngine {
       // AudioContext policy
     }
   }
+
+  playDefeat() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const notes = [
+        { freq: 311.13, time: 0, dur: 0.25 },     // Eb4
+        { freq: 293.66, time: 0.22, dur: 0.25 },   // D4
+        { freq: 277.18, time: 0.44, dur: 0.25 },   // Db4
+        { freq: 261.63, time: 0.66, dur: 0.55 },   // C4
+      ];
+
+      notes.forEach((n) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(n.freq, this.ctx.currentTime + n.time);
+
+        gain.gain.setValueAtTime(0.06, this.ctx.currentTime + n.time);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + n.time + n.dur);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(this.ctx.currentTime + n.time);
+        osc.stop(this.ctx.currentTime + n.time + n.dur + 0.05);
+      });
+    } catch {
+      // AudioContext policy
+    }
+  }
+
+  playCardFly() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(650, this.ctx.currentTime + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(280, this.ctx.currentTime + 0.25);
+
+      gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.26);
+    } catch {
+      // AudioContext policy
+    }
+  }
+
+  playStackFan() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(520, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(680, this.ctx.currentTime + 0.06);
+
+      gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.07);
+    } catch {
+      // AudioContext policy
+    }
+  }
 }
 
 export const sound = new SoundEngine();
