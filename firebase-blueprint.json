@@ -22,12 +22,30 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["roomCode", "hostId", "status", "tableSize"]
+    },
+    "metrics": {
+      "title": "App Activity Metrics",
+      "description": "Aggregated application metrics and activity counters",
+      "properties": {
+        "quartetClashMatches": { "type": "number" },
+        "findTheThiefMatches": { "type": "number" },
+        "pulseTasksNoted": { "type": "number" },
+        "drawingSeriesRequests": { "type": "number" },
+        "fileNameGrabberRequests": { "type": "number" },
+        "formCalculatorCalculations": { "type": "number" },
+        "keypadCalculatorCalculations": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
     "/rooms/{roomId}": {
       "entity": "rooms",
       "description": "Game room for live multiplayer synchronized state"
+    },
+    "/analytics/{docId}": {
+      "entity": "metrics",
+      "description": "Global usage and activity metrics"
     }
   }
 }

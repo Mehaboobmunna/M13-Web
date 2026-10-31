@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import { useNavigation } from '../../context/NavigationContext';
 import { Card, GameTheme, Player } from '../../types/quartetClash';
 import { sound } from '../../utils/soundEngine';
+import { useActivityMetrics, incrementMetric } from '../../utils/activityMetrics';
 import {
   createMultiplayerRoom,
   updateMultiplayerRoom,
@@ -289,6 +290,7 @@ const CUMULATIVE_STORAGE_KEY = 'buildsmith_quartet_cumulative_scores_v3';
 
 export const QuartetClashGame: React.FC = () => {
   const { navigate } = useNavigation();
+  const { metrics } = useActivityMetrics();
 
   // Settings & Modals
   const [currentThemeId, setCurrentThemeId] = useState<string>('animals');
@@ -596,6 +598,9 @@ export const QuartetClashGame: React.FC = () => {
       winningItemColor: winningItem.color,
       scoresBreakdown,
     });
+
+    // Increment global matches completed counter
+    incrementMetric('quartetClashMatches');
   };
 
   // Step timings depending on gameSpeed
@@ -1256,9 +1261,15 @@ export const QuartetClashGame: React.FC = () => {
           <div className="space-y-6 animate-fadeIn py-2">
             {/* Hero Banner */}
             <div className="text-center space-y-2 py-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold uppercase tracking-wider mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Real-Time 4-of-a-Kind Card Game</span>
+              <div className="flex items-center justify-center gap-2 flex-wrap mb-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Real-Time 4-of-a-Kind Card Game</span>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-slate-300 text-xs font-mono font-bold shadow-sm">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Matches Completed: <strong className="text-emerald-400">{metrics.quartetClashMatches}</strong></span>
+                </div>
               </div>
               <h2 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-white via-emerald-100 to-amber-200 bg-clip-text text-transparent">
                 Choose Game Mode

@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import { useNavigation } from '../../context/NavigationContext';
 import { CourtRole, CourtRoleId, ThiefPlayer, GameLog } from '../../types/findTheThief';
 import { sound } from '../../utils/soundEngine';
+import { useActivityMetrics, incrementMetric } from '../../utils/activityMetrics';
 import {
   ArrowLeft,
   Crown,
@@ -84,6 +85,7 @@ const COURT_ROLES: CourtRole[] = [
 
 export const FindTheThiefGame: React.FC = () => {
   const { navigate } = useNavigation();
+  const { metrics } = useActivityMetrics();
 
   // Modals & Settings
   const [showRules, setShowRules] = useState<boolean>(false);
@@ -236,6 +238,7 @@ export const FindTheThiefGame: React.FC = () => {
       actualThief: thief,
       seeker,
     });
+    incrementMetric('findTheThiefMatches');
   };
 
   const getRoleIcon = (roleId: CourtRoleId | null) => {
@@ -287,6 +290,11 @@ export const FindTheThiefGame: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span>Matches Completed: <strong className="text-white font-mono">{metrics.findTheThiefMatches}</strong></span>
+          </div>
+
           <button
             onClick={() => setShowRules(true)}
             className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 flex items-center gap-1 cursor-pointer"

@@ -1,44 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigation } from '../context/NavigationContext';
-import { ArrowLeft, Gamepad2, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trophy, Flame } from 'lucide-react';
+import { useActivityMetrics } from '../utils/activityMetrics';
 
 export const GamesHubPage: React.FC = () => {
   const { navigate } = useNavigation();
-  const [qcCount, setQcCount] = useState<number>(142);
-  const [fttCount, setFttCount] = useState<number>(98);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { metrics } = useActivityMetrics();
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchStats = async () => {
-      try {
-        const resQC = await fetch('https://countapi.mileshilliard.com/api/v1/get/project_hub_quartet_clash');
-        if (resQC.ok) {
-          const dataQC = await resQC.json();
-          if (isMounted && typeof dataQC.value !== 'undefined') {
-            setQcCount(parseInt(dataQC.value, 10));
-          }
-        }
-      } catch {}
-
-      try {
-        const resFTT = await fetch('https://countapi.mileshilliard.com/api/v1/get/project_hub_find_the_thief');
-        if (resFTT.ok) {
-          const dataFTT = await resFTT.json();
-          if (isMounted && typeof dataFTT.value !== 'undefined') {
-            setFttCount(parseInt(dataFTT.value, 10));
-          }
-        }
-      } catch {}
-
-      if (isMounted) setLoading(false);
-    };
-
-    fetchStats();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const totalMatches = metrics.quartetClashMatches + metrics.findTheThiefMatches;
 
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-10 flex-1 flex flex-col items-center">
@@ -55,21 +24,22 @@ export const GamesHubPage: React.FC = () => {
         </p>
       </header>
 
-      {/* Global & Individual Stats Bar */}
+      {/* Global & Individual Matches Completed Bar */}
       <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-        <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-full text-xs text-slate-400 font-mono shadow-sm">
-          Total Played:{' '}
-          <span className="text-sky-400 font-bold ml-1">
-            {loading ? '...' : qcCount + fttCount}
-          </span>
+        <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-full text-xs text-slate-300 font-mono shadow-sm flex items-center gap-2">
+          <Trophy className="w-3.5 h-3.5 text-amber-400" />
+          <span>Total Matches Completed:</span>
+          <span className="text-emerald-400 font-bold ml-0.5">{totalMatches}</span>
         </div>
-        <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-full text-xs text-slate-400 font-mono shadow-sm">
-          Quartet Clash:{' '}
-          <span className="text-sky-400 font-bold ml-1">{loading ? '...' : qcCount}</span>
+        <div className="bg-slate-800 border border-emerald-500/30 px-4 py-2 rounded-full text-xs text-slate-300 font-mono shadow-sm flex items-center gap-1.5">
+          <span className="text-sm">🃏</span>
+          <span>Quartet Clash:</span>
+          <span className="text-emerald-400 font-bold">{metrics.quartetClashMatches}</span>
         </div>
-        <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-full text-xs text-slate-400 font-mono shadow-sm">
-          Find the Thief:{' '}
-          <span className="text-sky-400 font-bold ml-1">{loading ? '...' : fttCount}</span>
+        <div className="bg-slate-800 border border-amber-500/30 px-4 py-2 rounded-full text-xs text-slate-300 font-mono shadow-sm flex items-center gap-1.5">
+          <span className="text-sm">🕵️</span>
+          <span>Find the Thief:</span>
+          <span className="text-amber-400 font-bold">{metrics.findTheThiefMatches}</span>
         </div>
       </div>
 
@@ -92,9 +62,13 @@ export const GamesHubPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
               Fast-paced 4-card showdown. Pass cards clockwise in real-time, anticipate opponents' hands, and claim quartet sets!
             </p>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold font-mono flex items-center gap-1">
+                <Trophy className="w-3 h-3 text-amber-400" />
+                <span>{metrics.quartetClashMatches} Matches Completed</span>
+              </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 font-semibold">
-                Solo vs Smart Bots
+                Solo & Multiplayer
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-slate-400 border border-slate-700 font-semibold">
                 16 Themed Decks
@@ -121,7 +95,11 @@ export const GamesHubPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
               Crown & Conclave social deduction mini-game. Assume noble court roles (King, Queen, Knight, Bishop) to interrogate suspects and unmask the Thief!
             </p>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold font-mono flex items-center gap-1">
+                <Trophy className="w-3 h-3 text-amber-400" />
+                <span>{metrics.findTheThiefMatches} Matches Completed</span>
+              </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-400 border border-amber-800/50 font-semibold">
                 Royal Court Roles
               </span>

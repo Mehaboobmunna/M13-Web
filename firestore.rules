@@ -4,5 +4,8 @@ service cloud.firestore {
     match /rooms/{roomId} {
       allow read, write: if true;
     }
+    match /analytics/{docId} {
+      allow read, write: if true;
+    }
   }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigation } from '../../context/NavigationContext';
 import { Project, Task, PulseBackupData } from '../../types/pulse';
+import { useActivityMetrics, setMetricValue } from '../../utils/activityMetrics';
 import {
   ArrowLeft,
   Play,
@@ -77,13 +78,14 @@ export const PulseApp: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const taskInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sync state to local storage
+  // Sync state to local storage and global metrics
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
   }, [projects]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+    setMetricValue('pulseTasksNoted', tasks.length);
   }, [tasks]);
 
   useEffect(() => {
@@ -464,6 +466,10 @@ export const PulseApp: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+            <span>📋 Tasks Noted: <strong className="text-white font-mono">{tasks.length}</strong></span>
+          </div>
+
           <button
             onClick={exportCSV}
             className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 flex items-center gap-1.5 cursor-pointer"

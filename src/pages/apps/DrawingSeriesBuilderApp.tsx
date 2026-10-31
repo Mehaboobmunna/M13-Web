@@ -1,10 +1,12 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useNavigation } from '../../context/NavigationContext';
 import { buildDrawingSeries } from '../../utils/drawingSeriesParser';
-import { ArrowLeft, FileText, Upload, Copy, Check, Trash2 } from 'lucide-react';
+import { ArrowLeft, FileText, Upload, Copy, Check, Trash2, Zap } from 'lucide-react';
+import { useActivityMetrics, incrementMetric } from '../../utils/activityMetrics';
 
 export const DrawingSeriesBuilderApp: React.FC = () => {
   const { navigate } = useNavigation();
+  const { metrics } = useActivityMetrics();
 
   const [filenames, setFilenames] = useState<string[]>([]);
   const [manualInput, setManualInput] = useState<string>('');
@@ -27,6 +29,7 @@ export const DrawingSeriesBuilderApp: React.FC = () => {
 
     const newNames = pdfFiles.map((f) => f.name);
     setFilenames((prev) => [...prev, ...newNames]);
+    incrementMetric('drawingSeriesRequests');
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -41,7 +44,10 @@ export const DrawingSeriesBuilderApp: React.FC = () => {
     e.preventDefault();
     if (!manualInput.trim()) return;
     const parts = manualInput.split(',').map((s) => s.trim()).filter(Boolean);
-    setFilenames((prev) => [...prev, ...parts]);
+    if (parts.length > 0) {
+      setFilenames((prev) => [...prev, ...parts]);
+      incrementMetric('drawingSeriesRequests');
+    }
     setManualInput('');
   };
 
@@ -81,15 +87,21 @@ export const DrawingSeriesBuilderApp: React.FC = () => {
 
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-700/80 to-blue-600/60 p-6 text-white border-b border-blue-500/20 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-blue-700/80 to-blue-600/60 p-6 text-white border-b border-blue-500/20 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Drawing Series Builder</h1>
             <p className="text-blue-200 text-xs sm:text-sm mt-1">
               Upload PDF drawing files to group sequential numbers into clean ranges.
             </p>
           </div>
-          <div className="bg-white/10 p-3 rounded-xl backdrop-blur-md hidden sm:block">
-            <FileText className="w-7 h-7 text-blue-200" />
+          <div className="flex items-center gap-3">
+            <div className="px-3 py-1.5 rounded-lg bg-black/30 border border-white/20 text-blue-200 text-xs font-semibold flex items-center gap-1.5 backdrop-blur-md">
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span>Requests Processed: <strong className="text-white font-mono">{metrics.drawingSeriesRequests}</strong></span>
+            </div>
+            <div className="bg-white/10 p-3 rounded-xl backdrop-blur-md hidden sm:block">
+              <FileText className="w-7 h-7 text-blue-200" />
+            </div>
           </div>
         </div>
 

@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { useNavigation } from '../../context/NavigationContext';
-import { ArrowLeft, UploadCloud, Copy, Check, Trash2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, Copy, Check, Trash2, Zap } from 'lucide-react';
+import { useActivityMetrics, incrementMetric } from '../../utils/activityMetrics';
 
 export const FileNameGrabberApp: React.FC = () => {
   const { navigate } = useNavigation();
+  const { metrics } = useActivityMetrics();
   const [files, setFiles] = useState<File[]>([]);
   const [includeExtension, setIncludeExtension] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
@@ -13,7 +15,10 @@ export const FileNameGrabberApp: React.FC = () => {
   const handleFiles = (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
     const newFiles = Array.from(selectedFiles);
-    setFiles((prev) => [...prev, ...newFiles]);
+    if (newFiles.length > 0) {
+      setFiles((prev) => [...prev, ...newFiles]);
+      incrementMetric('fileNameGrabberRequests');
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -68,11 +73,17 @@ export const FileNameGrabberApp: React.FC = () => {
       </nav>
 
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">File Name Grabber</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Drop or select files to instantly generate a sorted, comma-separated list of filenames.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">File Name Grabber</h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Drop or select files to instantly generate a sorted, comma-separated list of filenames.
+            </p>
+          </div>
+          <div className="px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>Requests Processed: <strong className="text-white font-mono">{metrics.fileNameGrabberRequests}</strong></span>
+          </div>
         </div>
 
         {/* Drop Zone */}
