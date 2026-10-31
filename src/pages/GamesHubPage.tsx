@@ -104,6 +104,7 @@ export const GamesHubPage: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

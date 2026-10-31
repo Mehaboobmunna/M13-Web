@@ -8,6 +8,7 @@ export type AppRoute =
   | 'apps'
   | 'apps-pulse'
   | 'apps-file-name-grabber'
+  | 'apps-transmittal-builder'
   | 'apps-drawing-series-builder'
   | 'apps-imperial-calculator'
   | 'apps-keypad-calculator'
@@ -35,6 +36,7 @@ function pathToRoute(path: string, hash: string): AppRoute {
   if (full.includes('games')) return 'games';
 
   if (full.includes('pulse')) return 'apps-pulse';
+  if (full.includes('transmittal-builder') || full.includes('transmittal')) return 'apps-transmittal-builder';
   if (full.includes('file-name-grabber')) return 'apps-file-name-grabber';
   if (full.includes('drawing-series-builder')) return 'apps-drawing-series-builder';
   if (full.includes('calculator-history') || full.includes('calc-history')) return 'apps-calculator-history';
@@ -64,6 +66,8 @@ function routeToHash(route: AppRoute): string {
       return '#/apps/pulse';
     case 'apps-file-name-grabber':
       return '#/apps/file-name-grabber';
+    case 'apps-transmittal-builder':
+      return '#/apps/transmittal-builder';
     case 'apps-drawing-series-builder':
       return '#/apps/drawing-series-builder';
     case 'apps-imperial-calculator':

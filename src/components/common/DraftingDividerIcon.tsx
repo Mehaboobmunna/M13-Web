@@ -6,11 +6,11 @@ interface DraftingDividerIconProps {
 }
 
 /**
- * Minimal geometric instrument icon featuring a precision circle and drafting divider / compass.
+ * Minimal geometric instrument icon featuring a precision circle and drafting divider / compass with reduced line thickness.
  * Designed for BuildSmith architectural & precision engineering aesthetic.
  */
 export const DraftingDividerIcon: React.FC<DraftingDividerIconProps> = ({
-  className = 'w-5 h-5',
+  className = 'w-6 h-6',
   size,
 }) => {
   return (
@@ -25,26 +25,27 @@ export const DraftingDividerIcon: React.FC<DraftingDividerIconProps> = ({
       className={className}
       aria-hidden="true"
     >
-      {/* Precision drafted geometric circle */}
-      <circle cx="12" cy="12" r="9" strokeWidth="1.6" className="opacity-75" />
+      {/* Precision drafted geometric circle - r=10 */}
+      <circle cx="12" cy="12" r="10" strokeWidth="1.4" className="opacity-90" />
 
       {/* Top knurled handle */}
-      <path d="M12 2v2.5" strokeWidth="2" />
+      <path d="M12 1.5v3" strokeWidth="1.6" />
 
       {/* Central pivot hinge joint */}
-      <circle cx="12" cy="5.8" r="1.6" strokeWidth="1.6" />
+      <circle cx="12" cy="5.5" r="1.8" strokeWidth="1.4" fill="currentColor" className="opacity-20" />
+      <circle cx="12" cy="5.5" r="1.8" strokeWidth="1.4" />
 
       {/* Left divider leg */}
-      <path d="M11 7.2L5.8 20" strokeWidth="1.75" />
+      <path d="M11 7L4.5 21" strokeWidth="1.4" />
 
       {/* Right divider leg */}
-      <path d="M13 7.2L18.2 20" strokeWidth="1.75" />
+      <path d="M13 7L19.5 21" strokeWidth="1.4" />
 
       {/* Measuring / adjustment arc */}
-      <path d="M8.2 13.5a5.5 5.5 0 0 1 7.6 0" strokeWidth="1.4" />
+      <path d="M7.5 13.5a6 6 0 0 1 9 0" strokeWidth="1.2" />
 
       {/* Center fine-adjustment screw */}
-      <circle cx="12" cy="12.5" r="0.9" fill="currentColor" strokeWidth="0" />
+      <circle cx="12" cy="12.5" r="1" fill="currentColor" strokeWidth="0" />
     </svg>
   );
 };

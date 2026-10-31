@@ -13,6 +13,7 @@ export interface AppActivityMetrics {
   // Tools Requests
   drawingSeriesRequests: number;
   fileNameGrabberRequests: number;
+  transmittalBuilderRequests: number;
 
   // Calculators
   formCalculatorCalculations: number;
@@ -29,6 +30,7 @@ export const DEFAULT_METRICS: AppActivityMetrics = {
   pulseTasksNoted: 24,
   drawingSeriesRequests: 67,
   fileNameGrabberRequests: 85,
+  transmittalBuilderRequests: 42,
   formCalculatorCalculations: 119,
   keypadCalculatorCalculations: 234,
 };
@@ -146,6 +148,9 @@ export function subscribeActivityMetrics(
           drawingSeriesRequests: Number(data.drawingSeriesRequests ?? cached.drawingSeriesRequests),
           fileNameGrabberRequests: Number(
             data.fileNameGrabberRequests ?? cached.fileNameGrabberRequests
+          ),
+          transmittalBuilderRequests: Number(
+            data.transmittalBuilderRequests ?? cached.transmittalBuilderRequests
           ),
           formCalculatorCalculations: Number(
             data.formCalculatorCalculations ?? cached.formCalculatorCalculations

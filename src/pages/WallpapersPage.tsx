@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Wallpaper, DeviceFilter, SortOption } from '../types/wallpapers';
+
 import {
   Sparkles,
   Heart,
@@ -14,6 +15,49 @@ import {
 } from 'lucide-react';
 
 const WALLPAPERS: Wallpaper[] = [
+  // 0. OLED Minimalist Special Edition
+  {
+    id: 'wp-oled-center-1',
+    title: 'True Black Center Celestial Core',
+    category: 'Dark / OLED',
+    device: 'desktop',
+    resolution: '3840 x 2160',
+    aspect: '16:9',
+    views: 52100,
+    author: 'BuildSmith OLED Labs',
+    url: 'https://images.unsplash.com/photo-1507499739999-097706ad8914?q=80&w=2000&auto=format&fit=crop',
+    downloadUrl: 'https://images.unsplash.com/photo-1507499739999-097706ad8914?q=85&w=3840&auto=format&fit=crop',
+    tags: ['oled', 'dark', 'minimal', 'center', 'glowing', 'black'],
+    palette: ['#000000', '#06b6d4', '#10b981', '#1e293b'],
+  },
+  {
+    id: 'wp-oled-corner-1',
+    title: 'True Black Corner Neon Spark',
+    category: 'Dark / OLED',
+    device: 'mobile',
+    resolution: '1440 x 3200',
+    aspect: '9:16',
+    views: 48900,
+    author: 'BuildSmith OLED Labs',
+    url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1200&auto=format&fit=crop',
+    downloadUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=85&w=1440&auto=format&fit=crop',
+    tags: ['oled', 'dark', 'minimal', 'corner', 'neon', 'black'],
+    palette: ['#000000', '#ec4899', '#8b5cf6', '#0f172a'],
+  },
+  {
+    id: 'wp-oled-monolith-1',
+    title: 'True Black Void Monolith Center',
+    category: 'Dark / OLED',
+    device: 'desktop',
+    resolution: '3840 x 2160',
+    aspect: '16:9',
+    views: 51200,
+    author: 'BuildSmith OLED Labs',
+    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop',
+    downloadUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=85&w=3840&auto=format&fit=crop',
+    tags: ['oled', 'dark', 'minimal', 'monolith', 'center', 'black'],
+    palette: ['#000000', '#3b82f6', '#6366f1', '#09090b'],
+  },
   // 1. Vehicles
   {
     id: 'wp-veh-1',
@@ -237,6 +281,7 @@ export const WallpapersPage: React.FC = () => {
   const [filterFavoritesOnly, setFilterFavoritesOnly] = useState<boolean>(false);
   const [activeModalWallpaper, setActiveModalWallpaper] = useState<Wallpaper | null>(null);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
 
   const toggleFavorite = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -625,6 +670,7 @@ export const WallpapersPage: React.FC = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

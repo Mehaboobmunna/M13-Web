@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigation } from '../context/NavigationContext';
-import { Clock, FolderOpen, PenTool, Ruler, ArrowRight, History } from 'lucide-react';
+import { Clock, FolderOpen, PenTool, Ruler, ArrowRight, History, FileText } from 'lucide-react';
 
 export const AppsHubPage: React.FC = () => {
   const { navigate } = useNavigation();
@@ -53,6 +53,30 @@ export const AppsHubPage: React.FC = () => {
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
               Extract, clean, sort, and format file names from local folders and dragged drops instantly.
+            </p>
+          </div>
+        </div>
+
+        {/* Transmittal Builder Entry (New Improved Tool) */}
+        <div
+          onClick={() => navigate('apps-transmittal-builder')}
+          className="bg-gradient-to-r from-slate-900 via-slate-800/90 to-slate-900 border-2 border-cyan-500/40 hover:border-cyan-400 rounded-2xl p-5 cursor-pointer card-hover-lift transition-all flex items-start gap-4 group shadow-xl shadow-cyan-500/10 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 px-3 py-1 bg-cyan-500 text-slate-950 font-black text-[10px] font-mono tracking-wider rounded-bl-xl shadow-sm">
+            NEW & ENHANCED
+          </div>
+          <div className="w-11 h-11 rounded-xl bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shrink-0 group-hover:scale-105 transition-transform shadow-inner">
+            <FileText className="w-6 h-6 text-cyan-300" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                📄 Transmittal Builder
+              </h2>
+              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-300 group-hover:translate-x-1 transition-all" />
+            </div>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+              Populate Word template files (`.docx`) with 3 distinct PDF file dropzones. Automatically attaches current date in <strong className="text-cyan-300 font-mono">MM-DD-YYYY</strong> format, formats submittal tables, and downloads updated Word documents.
             </p>
           </div>
         </div>
@@ -151,6 +175,7 @@ export const AppsHubPage: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { BookOpen, Calendar, Clock, Tag, ChevronRight } from 'lucide-react';
 
+
 interface Article {
   id: string;
   title: string;
@@ -126,6 +127,7 @@ export const BlogPage: React.FC = () => {
           ))}
         </div>
       )}
+
     </div>
   );
 };
