@@ -29,7 +29,8 @@ import {
   Ban,
   Brain,
   Search,
-  Sparkles
+  Sparkles,
+  Flame
 } from 'lucide-react';
 
 const EXTRA_MIDDLE_ROLES: CourtRole[] = [
@@ -85,8 +86,38 @@ const CULTURAL_BOT_NAMES = [
   "Fatima from Cairo (bot)",
   "Liam from Dublin (bot)",
   "Priya from Mumbai (bot)",
-  "Kenji from Tokyo (bot)"
+  "Kenji from Tokyo (bot)",
+  "Amira from Casablanca (bot)",
+  "Dmitri from Moscow (bot)",
+  "Zara from Sydney (bot)",
+  "Kofi from Nairobi (bot)",
+  "Astrid from Stockholm (bot)",
+  "Tariq from Dubai (bot)",
+  "Siddharth from Delhi (bot)",
+  "Hana from Seoul (bot)",
+  "Mateus from Rio (bot)",
+  "Chiara from Rome (bot)",
+  "Youssef from Tunis (bot)",
+  "Nadia from Athens (bot)",
+  "Bao from Hanoi (bot)",
+  "Ingrid from Oslo (bot)",
+  "Chinedu from Lagos (bot)",
+  "Sora from Osaka (bot)",
+  "Valeria from Buenos Aires (bot)",
+  "Kaito from Fukuoka (bot)",
+  "Esme from Paris (bot)",
+  "Tariq from Amman (bot)",
+  "Siobhan from Galway (bot)"
 ];
+
+interface LeaderboardRecord {
+  alias: string;
+  score: number;
+  winStreak: number;
+  date: string;
+}
+
+const LEADERBOARD_STORAGE_KEY = 'find_the_thief_leaderboard_v1';
 
 export const FindTheThiefGame: React.FC = () => {
   const { navigate } = useNavigation();
@@ -115,6 +146,90 @@ export const FindTheThiefGame: React.FC = () => {
   const [showRules, setShowRules] = useState<boolean>(false);
   const [showScoreboard, setShowScoreboard] = useState<boolean>(false);
   const [showWinnerModal, setShowWinnerModal] = useState<boolean>(false);
+  const [winStreak, setWinStreak] = useState<number>(0);
+  const [turnTimeLeft, setTurnTimeLeft] = useState<number>(20);
+  const [botFailedSwapsMemory, setBotFailedSwapsMemory] = useState<Record<string, string[]>>({});
+
+  // Turn time limit countdown effect
+  useEffect(() => {
+    if (gamePhase !== 'PLAYING' || isDealing) return;
+    setTurnTimeLeft(20);
+
+    const interval = setInterval(() => {
+      setTurnTimeLeft(prev => {
+        if (prev <= 1) {
+          if (currentSeekerPlayer) {
+            const eligibleTargets = players.filter(
+              p => !lockedPlayerIds.includes(p.id) &&
+                   p.id !== currentSeekerPlayer.id &&
+                   !stepExcludedIds.includes(p.id)
+            );
+            if (eligibleTargets.length > 0) {
+              const randomTarget = eligibleTargets[Math.floor(Math.random() * eligibleTargets.length)];
+              handleGuessPlayer(randomTarget.id, true);
+            }
+          }
+          return 20;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gamePhase, isDealing, currentStep]);
+  const [totalGamesPlayed, setTotalGamesPlayed] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('ftt_total_games') || '0', 10); } catch { return 0; }
+  });
+  const [totalWins, setTotalWins] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('ftt_total_wins') || '0', 10); } catch { return 0; }
+  });
+  const [longestWinStreak, setLongestWinStreak] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('ftt_max_streak') || '0', 10); } catch { return 0; }
+  });
+
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  const saveToLeaderboard = (alias: string, score: number, won: boolean) => {
+    const newGames = totalGamesPlayed + 1;
+    setTotalGamesPlayed(newGames);
+    try { localStorage.setItem('ftt_total_games', newGames.toString()); } catch {}
+
+    let newWins = totalWins;
+    if (won) {
+      newWins += 1;
+      setTotalWins(newWins);
+      try { localStorage.setItem('ftt_total_wins', newWins.toString()); } catch {}
+    }
+
+    const currentStreak = won ? winStreak + 1 : 0;
+    if (won) setWinStreak(currentStreak);
+    else setWinStreak(0);
+
+    const maxStreak = Math.max(longestWinStreak, currentStreak);
+    setLongestWinStreak(maxStreak);
+    try { localStorage.setItem('ftt_max_streak', maxStreak.toString()); } catch {}
+
+    const newRecord: LeaderboardRecord = {
+      alias: alias.trim() || 'Commander',
+      score,
+      winStreak: currentStreak,
+      date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setLeaderboard(prev => {
+      const updated = [newRecord, ...prev].sort((a, b) => b.score - a.score).slice(0, 10);
+      try {
+        localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
 
   const hierarchy = getRoleHierarchy(players.length);
   const currentSeekerRole = hierarchy[currentStep];
@@ -137,16 +252,18 @@ export const FindTheThiefGame: React.FC = () => {
     ? [...players].sort((a, b) => (b.score || 0) - (a.score || 0))[0]
     : null;
 
-  // Bot turn auto-player
+  // Bot turn auto-player (Hard difficulty: tracks failed swaps and avoids guessing those players again)
   useEffect(() => {
     if (gamePhase !== 'PLAYING' || isDealing) return;
     if (!currentSeekerPlayer || !currentSeekerPlayer.isBot) return;
 
     const timer = setTimeout(() => {
+      const rememberedFailed = botFailedSwapsMemory[currentSeekerPlayer.id] || [];
       const eligibleTargets = players.filter(
         p => !lockedPlayerIds.includes(p.id) &&
              p.id !== currentSeekerPlayer.id &&
-             !stepExcludedIds.includes(p.id)
+             !stepExcludedIds.includes(p.id) &&
+             !rememberedFailed.includes(p.id)
       );
       if (eligibleTargets.length > 0) {
         const randomTarget = eligibleTargets[Math.floor(Math.random() * eligibleTargets.length)];
@@ -155,7 +272,7 @@ export const FindTheThiefGame: React.FC = () => {
     }, 1800);
 
     return () => clearTimeout(timer);
-  }, [gamePhase, isDealing, currentStep, players, lockedPlayerIds, stepExcludedIds]);
+  }, [gamePhase, isDealing, currentStep, players, lockedPlayerIds, stepExcludedIds, botFailedSwapsMemory]);
 
   const handleAddBot = () => {
     if (players.length >= 10) return;
@@ -181,18 +298,37 @@ export const FindTheThiefGame: React.FC = () => {
   const startRoundAnimation = (isNextRound = false) => {
     if (players.length < 4) return;
     const finalAlias = aliasInput.trim() || 'Commander';
-    const updatedPlayersWithAlias = players.map(p => p.isBot ? p : { ...p, name: finalAlias });
+    
+    let activePlayers = players;
+    if (!isNextRound) {
+      const shuffledPool = [...CULTURAL_BOT_NAMES].sort(() => Math.random() - 0.5);
+      const avatars = ['🧝‍♀️', '⚔️', '🧙‍♂️', '🦹‍♀️', '🛡️', '👑', '🦅'];
+      activePlayers = players.map((p, idx) => {
+        if (!p.isBot) return { ...p, name: finalAlias, score: 0 };
+        const botIdx = idx - 1;
+        return {
+          ...p,
+          name: shuffledPool[botIdx % shuffledPool.length],
+          score: 0,
+          avatar: avatars[idx % avatars.length]
+        };
+      });
+    } else {
+      activePlayers = players.map(p => p.isBot ? p : { ...p, name: finalAlias });
+    }
 
     setIsShuffling(true);
+    sound.playStackFan();
 
     setTimeout(() => {
       setIsShuffling(false);
       setIsDealing(true);
+      sound.playCardFly();
 
-      const newHierarchy = getRoleHierarchy(updatedPlayersWithAlias.length);
+      const newHierarchy = getRoleHierarchy(activePlayers.length);
       const shuffledRoles = [...newHierarchy].sort(() => Math.random() - 0.5);
 
-      const dealtPlayers = updatedPlayersWithAlias.map((p, idx) => ({
+      const dealtPlayers = activePlayers.map((p, idx) => ({
         ...p,
         roleId: shuffledRoles[idx].id
       }));
@@ -206,6 +342,7 @@ export const FindTheThiefGame: React.FC = () => {
       setCurrentStep(0);
       setLockedPlayerIds([]);
       setStepExcludedIds([]);
+      setBotFailedSwapsMemory({});
       setLastSwap(null);
       setShowWinnerModal(false);
 
@@ -290,6 +427,11 @@ export const FindTheThiefGame: React.FC = () => {
         confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
         setShowWinnerModal(true);
         incrementMetric('findTheThiefMatches');
+
+        const userFinalScore = updatedPlayers.find(p => p.id === userPlayer.id)?.score || 0;
+        const topWinner = [...updatedPlayers].sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+        const userWon = topWinner.id === userPlayer.id;
+        saveToLeaderboard(aliasInput, userFinalScore, userWon);
       }
 
       setPlayers(updatedPlayers);
@@ -302,6 +444,7 @@ export const FindTheThiefGame: React.FC = () => {
       setLogs(prev => [...newLogsList, ...prev]);
     } else {
       sound.playAlert(false);
+      sound.playPassCard();
       const seekerOldRole = seekerPlayer.roleId;
       const guessedOldRole = guessedPlayer.roleId;
 
@@ -316,6 +459,10 @@ export const FindTheThiefGame: React.FC = () => {
 
       setPlayers(updatedPlayers);
       setStepExcludedIds(updatedExcludedIds);
+      setBotFailedSwapsMemory(prev => ({
+        ...prev,
+        [seekerPlayer.id]: Array.from(new Set([...(prev[seekerPlayer.id] || []), guessedPlayer.id]))
+      }));
       setLastAction(swapMsg);
       setLastSwap({ type: 'SWAP', fromName: seekerPlayer.name, toName: guessedPlayer.name });
       setLogs(prev => [swapMsg, ...prev]);
@@ -355,54 +502,122 @@ export const FindTheThiefGame: React.FC = () => {
       </header>
 
       {mode === 'SELECT' ? (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center max-w-xl mx-auto my-auto space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto text-3xl shadow-inner animate-bounce">
-            👑
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-black text-white">Crown & Conclave: Find the Thief</h2>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              Enter your player alias and choose your gameplay mode.
-            </p>
+        <div className="grid md:grid-cols-12 gap-6 items-start my-auto">
+          <div className="md:col-span-7 bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto text-3xl shadow-inner animate-bounce">
+              👑
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white">Crown & Conclave: Find the Thief</h2>
+              <p className="text-slate-400 text-xs leading-relaxed">
+                Enter your player alias and choose your gameplay mode.
+              </p>
+            </div>
+
+            <div className="max-w-xs mx-auto text-left space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Your Alias</label>
+              <input
+                type="text"
+                maxLength={20}
+                value={aliasInput}
+                onChange={(e) => setAliasInput(e.target.value)}
+                placeholder="Enter your alias..."
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-bold text-sm focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4 pt-2">
+              <button
+                onClick={() => {
+                  const shuffledPool = [...CULTURAL_BOT_NAMES].sort(() => Math.random() - 0.5);
+                  const avatars = ['🧝‍♀️', '⚔️', '🧙‍♂️', '🦹‍♀️', '🛡️', '👑', '🦅'];
+                  const finalAlias = aliasInput.trim() || 'Commander';
+                  setPlayers([
+                    { id: 'user', name: finalAlias, score: 0, roleId: null, isBot: false, avatar: '👑' },
+                    { id: 'bot-1', name: shuffledPool[0], score: 0, roleId: null, isBot: true, avatar: avatars[0] },
+                    { id: 'bot-2', name: shuffledPool[1], score: 0, roleId: null, isBot: true, avatar: avatars[1] },
+                    { id: 'bot-3', name: shuffledPool[2], score: 0, roleId: null, isBot: true, avatar: avatars[2] },
+                  ]);
+                  setRound(1);
+                  setGamePhase('LOBBY');
+                  setMode('SOLO');
+                }}
+                className="p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-amber-500 hover:bg-slate-900 transition flex flex-col items-center gap-3 cursor-pointer group shadow-lg"
+              >
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
+                  <Bot className="w-6 h-6" />
+                </div>
+                <div className="font-bold text-sm text-white">Solo vs AI Bots</div>
+                <div className="text-[11px] text-slate-400">Play locally with international bots.</div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMode('MULTIPLEX');
+                  navigate('games-quartet-clash');
+                }}
+                className="p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-pink-500 hover:bg-slate-900 transition flex flex-col items-center gap-3 cursor-pointer group shadow-lg"
+              >
+                <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 group-hover:scale-110 transition">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div className="font-bold text-sm text-white">Multiplayer Online</div>
+                <div className="text-[11px] text-slate-400">Create or join real-time rooms.</div>
+              </button>
+            </div>
           </div>
 
-          <div className="max-w-xs mx-auto text-left space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Your Alias</label>
-            <input
-              type="text"
-              maxLength={20}
-              value={aliasInput}
-              onChange={(e) => setAliasInput(e.target.value)}
-              placeholder="Enter your alias..."
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-bold text-sm focus:outline-none focus:border-amber-500"
-            />
-          </div>
+          {/* Local Storage Leaderboard Widget */}
+          <div className="md:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-extrabold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                <Trophy className="w-4 h-4" /> Hall of Fame & Streaks
+              </h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">Local Storage</span>
+            </div>
 
-          <div className="grid sm:grid-cols-2 gap-4 pt-2">
-            <button
-              onClick={() => setMode('SOLO')}
-              className="p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-amber-500 hover:bg-slate-900 transition flex flex-col items-center gap-3 cursor-pointer group shadow-lg"
-            >
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
-                <Bot className="w-6 h-6" />
+            <div className="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+              <div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Games</div>
+                <div className="text-sm font-black font-mono text-white">{totalGamesPlayed}</div>
               </div>
-              <div className="font-bold text-sm text-white">Solo vs AI Bots</div>
-              <div className="text-[11px] text-slate-400">Play locally with 4 to 10 international bots.</div>
-            </button>
-
-            <button
-              onClick={() => {
-                setMode('MULTIPLEX');
-                navigate('games-quartet-clash');
-              }}
-              className="p-5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-pink-500 hover:bg-slate-900 transition flex flex-col items-center gap-3 cursor-pointer group shadow-lg"
-            >
-              <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 group-hover:scale-110 transition">
-                <Users className="w-6 h-6" />
+              <div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Wins</div>
+                <div className="text-sm font-black font-mono text-emerald-400">{totalWins}</div>
               </div>
-              <div className="font-bold text-sm text-white">Multiplayer Online</div>
-              <div className="text-[11px] text-slate-400">Create or join real-time online rooms.</div>
-            </button>
+              <div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Max Streak</div>
+                <div className="text-sm font-black font-mono text-amber-400">{longestWinStreak}</div>
+              </div>
+            </div>
+
+            {leaderboard.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-500">
+                No recorded victories yet. Complete a match to set a high score!
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {leaderboard.map((rec, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-5 h-5 rounded flex items-center justify-center font-black ${idx === 0 ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <div className="font-bold text-white">{rec.alias}</div>
+                        <div className="text-[10px] text-slate-500">{rec.date}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono font-extrabold text-amber-300">{rec.score} pts</div>
+                      <div className="text-[10px] text-emerald-400 flex items-center gap-0.5 justify-end">
+                        <Flame className="w-3 h-3 text-orange-400" /> <span>Streak: {rec.winStreak}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : gamePhase === 'LOBBY' ? (
@@ -507,6 +722,25 @@ export const FindTheThiefGame: React.FC = () => {
               <div className="h-full bg-gradient-to-r from-amber-400 via-pink-500 to-emerald-400 transition-all duration-700 ease-out" style={{ width: `${progressPercent}%` }} />
             </div>
 
+            {lastSwap?.type === 'SWAP' && (
+              <div className="bg-gradient-to-r from-red-950/80 via-slate-900 to-amber-950/80 border-2 border-red-500/60 rounded-3xl p-4 shadow-2xl animate-card-swap flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center shrink-0 animate-bounce">
+                    <ArrowRightLeft className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-black text-white">🔄 Secret Card Swap Executed!</div>
+                    <div className="text-xs text-slate-300 mt-0.5">{lastSwap.fromName} and {lastSwap.toName} swapped their secret court ranks due to a wrong guess!</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-12 rounded-lg bg-amber-600 border border-amber-300 shadow-xl flex items-center justify-center text-white font-bold text-xs animate-pulse">🎴</div>
+                  <ArrowRightLeft className="w-4 h-4 text-red-400" />
+                  <div className="w-9 h-12 rounded-lg bg-red-700 border border-red-300 shadow-xl flex items-center justify-center text-white font-bold text-xs animate-pulse">🎴</div>
+                </div>
+              </div>
+            )}
+
             <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
@@ -567,17 +801,21 @@ export const FindTheThiefGame: React.FC = () => {
                 <div
                   key={p.id}
                   onClick={() => canBeGuessed && handleGuessPlayer(p.id, false)}
-                  className={`relative rounded-3xl p-4 border transition-all duration-300 flex flex-col justify-between min-h-[190px] ${
-                    isActiveSeeker ? 'bg-amber-950/50 border-amber-400 ring-4 ring-amber-400/40 shadow-xl shadow-amber-500/20 scale-[1.02] animate-pulse' :
+                  className={`relative rounded-3xl p-4 border transition-all duration-500 flex flex-col justify-between min-h-[195px] overflow-hidden ${
+                    isActiveSeeker ? 'bg-gradient-to-br from-amber-950/90 via-slate-900 to-amber-950/70 border-2 border-amber-400 ring-8 ring-amber-400/30 shadow-2xl shadow-amber-500/40 scale-[1.03] z-10' :
                     isLocked ? 'bg-emerald-950/25 border-emerald-500/50' :
                     canBeGuessed ? 'bg-slate-900 hover:bg-slate-800 border-pink-500/50 cursor-pointer shadow-lg' :
                     'bg-slate-900/90 border-slate-800'
                   }`}
                 >
+                  {isActiveSeeker && (
+                    <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 animate-pulse" />
+                  )}
+
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="font-bold text-sm text-white flex items-center gap-1.5">
-                        <span>{displayName}</span>
+                        <span className={isActiveSeeker ? 'text-amber-300 font-black' : ''}>{displayName}</span>
                         {isMe && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">You</span>}
                       </div>
                       <div className="text-xs text-slate-400 font-semibold mt-0.5">
@@ -587,9 +825,14 @@ export const FindTheThiefGame: React.FC = () => {
 
                     {isLocked && <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold">Locked</span>}
                     {isActiveSeeker && (
-                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 font-black uppercase tracking-wider animate-bounce shadow-md">
-                        ⭐ Active Seeker
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black uppercase tracking-wider animate-bounce shadow-lg flex items-center gap-1">
+                          <Search className="w-3 h-3" /> Active Seeker
+                        </span>
+                        <div className="flex items-center gap-1 text-[10px] font-mono font-black text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-500/40 animate-pulse">
+                          <span>⏱️ {turnTimeLeft}s left</span>
+                        </div>
+                      </div>
                     )}
                   </div>
 
@@ -632,6 +875,82 @@ export const FindTheThiefGame: React.FC = () => {
         </div>
       )}
 
+      {showWinnerModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-slate-900 border-2 border-amber-500/60 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-amber-400 via-pink-500 to-emerald-400 animate-pulse" />
+            
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto text-3xl shadow-inner animate-bounce">
+                👑
+              </div>
+              <h3 className="text-2xl font-black text-white">Round {round} Complete!</h3>
+              <p className="text-xs text-slate-300">
+                The final Pawn has exposed the Thief! Here is the complete royal court summary.
+              </p>
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {[...players]
+                .sort((a, b) => (b.score || 0) - (a.score || 0))
+                .map((p, idx) => {
+                  const pRole = hierarchy.find(r => r.id === p.roleId);
+                  const isTopWinner = idx === 0;
+                  return (
+                    <div key={p.id} className={`flex items-center justify-between p-3.5 rounded-2xl border text-xs ${isTopWinner ? 'bg-amber-950/40 border-amber-500/60' : 'bg-slate-950 border-slate-800'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-black ${isTopWinner ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                          #{idx + 1}
+                        </span>
+                        <div>
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            <span>{p.id === userPlayer?.id ? (aliasInput || 'Commander') : p.name}</span>
+                            {isTopWinner && <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black">Winner</span>}
+                          </div>
+                          <div className="text-[10px] text-slate-400">{p.isBot ? 'International AI' : 'Human Player'}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        {pRole && (
+                          <div className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 ${pRole.badge}`}>
+                            <RoleIcon roleId={pRole.id} className="w-3.5 h-3.5" />
+                            <span>{pRole.name}</span>
+                          </div>
+                        )}
+                        <div className="text-right font-mono font-black text-amber-300 text-sm">
+                          {p.score || 0} pts
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowWinnerModal(false);
+                  startRoundAnimation(true);
+                }}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold text-xs shadow-lg cursor-pointer flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" /> Deal Next Round
+              </button>
+              <button
+                onClick={() => {
+                  setShowWinnerModal(false);
+                  setGamePhase('LOBBY');
+                }}
+                className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer"
+              >
+                Lobby
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showRules && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
@@ -645,14 +964,34 @@ export const FindTheThiefGame: React.FC = () => {
       {showScoreboard && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-amber-400">Standings</h3>
+            <h3 className="text-lg font-bold text-amber-400">Standings & Local Leaderboard</h3>
+
+            <div className="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+              <div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Games</div>
+                <div className="text-sm font-black font-mono text-white">{totalGamesPlayed}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Wins</div>
+                <div className="text-sm font-black font-mono text-emerald-400">{totalWins}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Max Streak</div>
+                <div className="text-sm font-black font-mono text-amber-400">{longestWinStreak}</div>
+              </div>
+            </div>
+
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {players.sort((a,b)=>(b.score||0)-(a.score||0)).map((p, idx) => (
-                <div key={p.id} className="flex justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-                  <span>#{idx+1} {p.id === userPlayer?.id ? (aliasInput || 'Commander') : p.name}</span>
-                  <span className="font-mono font-bold text-amber-300">{p.score||0} pts</span>
-                </div>
-              ))}
+              {leaderboard.length === 0 ? (
+                <div className="text-xs text-slate-500 text-center py-4">No high scores recorded yet.</div>
+              ) : (
+                leaderboard.map((rec, idx) => (
+                  <div key={idx} className="flex justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                    <span>#{idx+1} {rec.alias} (Streak: {rec.winStreak})</span>
+                    <span className="font-mono font-bold text-amber-300">{rec.score} pts</span>
+                  </div>
+                ))
+              )}
             </div>
             <button onClick={() => setShowScoreboard(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold cursor-pointer">Close</button>
           </div>
