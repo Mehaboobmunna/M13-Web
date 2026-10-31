@@ -10,6 +10,8 @@ export type AppRoute =
   | 'apps-file-name-grabber'
   | 'apps-drawing-series-builder'
   | 'apps-imperial-calculator'
+  | 'apps-keypad-calculator'
+  | 'apps-calculator-history'
   | 'wallpapers'
   | 'blog';
 
@@ -35,6 +37,8 @@ function pathToRoute(path: string, hash: string): AppRoute {
   if (full.includes('pulse')) return 'apps-pulse';
   if (full.includes('file-name-grabber')) return 'apps-file-name-grabber';
   if (full.includes('drawing-series-builder')) return 'apps-drawing-series-builder';
+  if (full.includes('calculator-history') || full.includes('calc-history')) return 'apps-calculator-history';
+  if (full.includes('keypad-calculator') || full.includes('construction-calculator')) return 'apps-keypad-calculator';
   if (full.includes('imperial-calculator')) return 'apps-imperial-calculator';
   if (full.includes('apps')) return 'apps';
 
@@ -64,6 +68,10 @@ function routeToHash(route: AppRoute): string {
       return '#/apps/drawing-series-builder';
     case 'apps-imperial-calculator':
       return '#/apps/imperial-calculator';
+    case 'apps-keypad-calculator':
+      return '#/apps/keypad-calculator';
+    case 'apps-calculator-history':
+      return '#/apps/calculator-history';
     case 'wallpapers':
       return '#/wallpapers';
     case 'blog':

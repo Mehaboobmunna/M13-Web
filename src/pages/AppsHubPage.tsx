@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigation } from '../context/NavigationContext';
-import { ArrowLeft, Clock, FolderOpen, PenTool, Ruler, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Clock, FolderOpen, PenTool, Ruler, ArrowRight, History } from 'lucide-react';
 
 export const AppsHubPage: React.FC = () => {
   const { navigate } = useNavigation();
@@ -87,20 +87,72 @@ export const AppsHubPage: React.FC = () => {
         {/* Imperial Calculator Entry */}
         <div
           onClick={() => navigate('apps-imperial-calculator')}
-          className="bg-slate-800/90 border border-slate-700/80 hover:border-sky-400 rounded-xl p-5 cursor-pointer card-hover-lift transition-all flex items-start gap-4 group shadow-lg"
+          className="bg-slate-800/90 border border-slate-700/80 hover:border-cyan-400 rounded-xl p-5 cursor-pointer card-hover-lift transition-all flex items-start gap-4 group shadow-lg"
         >
-          <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0 group-hover:scale-105 transition-transform">
             <Ruler className="w-5 h-5" />
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
-                📏 Imperial Calculator
+              <h2 className="text-lg font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
+                📏 Imperial Calculator (Form View)
               </h2>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
-              Add, subtract, multiply, and divide US imperial fractional dimensions and convert between inches, fractional feet, and metric.
+              Structured form-based dimensional calculator with feet, inches, 1/16" fraction dropdowns, scalar arithmetic, and metric toggle.
+            </p>
+          </div>
+        </div>
+
+        {/* Construction Master Keypad Calculator Entry */}
+        <div
+          onClick={() => navigate('apps-keypad-calculator')}
+          className="bg-slate-800/90 border border-blue-500/40 hover:border-blue-400 rounded-xl p-5 cursor-pointer card-hover-lift transition-all flex items-start gap-4 group shadow-lg"
+        >
+          <div className="w-10 h-10 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-300 shrink-0 group-hover:scale-105 transition-transform">
+            <span className="text-xl">📱</span>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-100 group-hover:text-blue-300 transition-colors">
+                  Construction Keypad Calculator
+                </h2>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold font-mono">
+                  KEYPAD
+                </span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+            </div>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
+              Full physical handheld calculator layout with 0–9 numerical keys, dedicated Feet ('), Inch ("), and Fraction (/) buttons, glowing LCD screen, digital paper tape, and instant Metric conversion.
+            </p>
+          </div>
+        </div>
+
+        {/* Calculation History Log Entry */}
+        <div
+          onClick={() => navigate('apps-calculator-history')}
+          className="bg-slate-800/90 border border-indigo-500/40 hover:border-indigo-400 rounded-xl p-5 cursor-pointer card-hover-lift transition-all flex items-start gap-4 group shadow-lg"
+        >
+          <div className="w-10 h-10 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 group-hover:scale-105 transition-transform">
+            <History className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-100 group-hover:text-indigo-300 transition-colors">
+                  📜 Calculation History Log
+                </h2>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold font-mono">
+                  HISTORY
+                </span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+            </div>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
+              View all previous calculations from both the Handheld Keypad and Form calculators. Search equations, filter by operations (+, −, ×, ÷), copy results, and export to CSV or text tape.
             </p>
           </div>
         </div>
@@ -108,3 +160,5 @@ export const AppsHubPage: React.FC = () => {
     </div>
   );
 };
+
+

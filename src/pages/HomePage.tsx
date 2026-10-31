@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { ArrowRight, Gamepad2, Zap, Image, BookOpen } from 'lucide-react';
+import { DraftingDividerIcon } from '../components/common/DraftingDividerIcon';
 
 export const HomePage: React.FC = () => {
   const { navigate } = useNavigation();
@@ -8,14 +9,17 @@ export const HomePage: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 max-w-5xl mx-auto w-full">
       <header className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 mb-4">
-          <Zap className="w-3.5 h-3.5" /> Project Hub Showcase
+        <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-slate-900/90 text-cyan-300 border border-cyan-500/30 mb-4 shadow-sm shadow-cyan-500/10">
+          <span className="w-5 h-5 rounded-md bg-slate-800 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-sm">
+            <DraftingDividerIcon className="w-3.5 h-3.5 text-cyan-400" />
+          </span>
+          BuildSmith Precision Suite
         </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-3">
-          Project Hub
+          BuildSmith
         </h1>
         <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto">
-          Multiplayer Games &bull; Web Apps &bull; Technical Blog
+          Construction & Imperial Calculators &bull; Productivity Web Apps &bull; Games &bull; Wallpapers
         </p>
       </header>
 
@@ -92,7 +96,7 @@ export const HomePage: React.FC = () => {
           className="bg-slate-800/90 border border-slate-700/80 hover:border-sky-400 rounded-2xl p-7 flex flex-col justify-between transition-all duration-200 card-hover-lift cursor-pointer group shadow-xl"
         >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-5 group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 mb-5 group-hover:scale-110 transition-transform">
               <BookOpen className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-bold text-slate-100 mb-2 flex items-center gap-2">

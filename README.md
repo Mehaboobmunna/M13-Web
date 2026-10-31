@@ -1,6 +1,6 @@
-# Project Hub
+# BuildSmith
 
-A modern React & TypeScript suite ported from the original Project Hub repository, featuring multiplayer card showdowns, medieval social deduction games, productivity apps, an interactive wallpaper gallery, and technical blog posts.
+A precision engineering and digital workshop suite built with React & TypeScript. Features jobsite-grade Construction Master Pro & Imperial dimensional calculators (with fractional tape history down to 1/128"), productivity tools, real-time card showdown games, interactive wallpaper galleries, and engineering blog posts.
 
 ## Features
 

@@ -11,6 +11,8 @@ import { PulseApp } from './pages/apps/PulseApp';
 import { FileNameGrabberApp } from './pages/apps/FileNameGrabberApp';
 import { DrawingSeriesBuilderApp } from './pages/apps/DrawingSeriesBuilderApp';
 import { ImperialCalculatorApp } from './pages/apps/ImperialCalculatorApp';
+import { KeypadImperialCalculatorApp } from './pages/apps/KeypadImperialCalculatorApp';
+import { CalculatorHistoryPage } from './pages/apps/CalculatorHistoryPage';
 import { QuartetClashGame } from './pages/games/QuartetClashGame';
 import { FindTheThiefGame } from './pages/games/FindTheThiefGame';
 
@@ -33,6 +35,10 @@ const AppContent: React.FC = () => {
         return <DrawingSeriesBuilderApp />;
       case 'apps-imperial-calculator':
         return <ImperialCalculatorApp />;
+      case 'apps-keypad-calculator':
+        return <KeypadImperialCalculatorApp />;
+      case 'apps-calculator-history':
+        return <CalculatorHistoryPage />;
       case 'games':
         return <GamesHubPage />;
       case 'games-quartet-clash':
@@ -52,7 +58,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 flex flex-col">{renderCurrentPage()}</main>
       <footer className="mt-auto border-t border-slate-800/80 bg-slate-950/80 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>Project Hub &bull; Multiplayer Games, Web Apps & Wallpapers</p>
+          <p><span className="font-semibold text-slate-300">BuildSmith</span> &bull; Construction Tools, Productivity Apps, Games & Wallpapers</p>
           <a
             href="#/"
             className="hover:text-sky-400 transition-colors"
