@@ -1,0 +1,7 @@
+{
+  "name": "Project Hub",
+  "description": "Multiplayer games, productivity web apps, wallpaper gallery, and engineering blog.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
