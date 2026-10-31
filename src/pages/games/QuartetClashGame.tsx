@@ -4,6 +4,15 @@ import { useNavigation } from '../../context/NavigationContext';
 import { Card, GameTheme, Player } from '../../types/quartetClash';
 import { sound } from '../../utils/soundEngine';
 import {
+  createMultiplayerRoom,
+  updateMultiplayerRoom,
+  subscribeToRoom,
+  findRoomByCode,
+  generateRoomCode,
+  getOrCreatePlayerId,
+  RoomData,
+} from '../../utils/firebase';
+import {
   ArrowLeft,
   RotateCcw,
   BookOpen,
@@ -31,6 +40,15 @@ import {
   UserMinus,
   Bot,
   Timer,
+  Users,
+  Copy,
+  Check,
+  Share2,
+  Wifi,
+  Play,
+  Crown,
+  Globe,
+  User,
 } from 'lucide-react';
 
 const DECK_THEMES: GameTheme[] = [
@@ -280,14 +298,24 @@ export const QuartetClashGame: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [gameSpeed, setGameSpeed] = useState<'normal' | 'fast'>('normal');
 
+  // Multiplayer & Single Player Mode State
+  type GameMode = 'mode_select' | 'bot_select' | 'multiplayer_setup' | 'multiplayer_lobby' | 'playing';
+  const [gameMode, setGameMode] = useState<GameMode>('mode_select');
+  const [playType, setPlayType] = useState<'single' | 'multiplayer'>('single');
+  const [currentRoom, setCurrentRoom] = useState<RoomData | null>(null);
+  const [localPlayer] = useState(() => getOrCreatePlayerId());
+  const [joinCodeInput, setJoinCodeInput] = useState<string>('');
+  const [multiplayerTab, setMultiplayerTab] = useState<'create' | 'join'>('create');
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [isLobbyLoading, setIsLobbyLoading] = useState<boolean>(false);
+  const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [selectedBotCount, setSelectedBotCount] = useState<number>(3);
+
   // Multiplayer & Table configuration (4 to 6 players, 6 is the game-theoretic optimum maximum)
   const [tablePlayerCount, setTablePlayerCount] = useState<number>(4);
 
   // Theme Locking: Themes can only be changed before first card is passed in the match
   const [hasPassedCardInMatch, setHasPassedCardInMatch] = useState<boolean>(false);
-
-  // Bot Takeover / Autoplay: allows player to be taken over by a bot seamlessly
-  const [isBotAutoPlay, setIsBotAutoPlay] = useState<boolean>(false);
 
   // Auto-pass Countdown Timer (15 seconds)
   const AUTO_PASS_SECONDS = 15;
@@ -598,7 +626,7 @@ export const QuartetClashGame: React.FC = () => {
     const toPlayer = playersSnapshot[toIdx];
 
     sound.playCardFly();
-    if (fromIdx === 0 && !isBotAutoPlay) sound.playPassCard();
+    if (fromPlayer.isHuman) sound.playPassCard();
 
     // Remove 1 card from the passing player
     const updatedFromHand = fromPlayer.hand.filter((c) => c.id !== cardToPass.id);
@@ -609,7 +637,7 @@ export const QuartetClashGame: React.FC = () => {
     const stepNum = ((fromIdx - starterIdx + playerCount) % playerCount) + 1;
 
     // Set secret active transfer in motion
-    setActiveTransfer({
+    const transferData = {
       card: cardToPass,
       fromName: fromPlayer.name,
       fromAvatar: fromPlayer.avatar,
@@ -617,15 +645,25 @@ export const QuartetClashGame: React.FC = () => {
       toAvatar: toPlayer.avatar,
       directionTitle: `Step ${stepNum}/${playerCount}: Passing 1 Secret Card to ${toPlayer.name}`,
       stepNum,
-    });
+    };
+    setActiveTransfer(transferData);
     setCurrentStep('passing');
     setActivePlayerIdx(fromIdx);
     setSelectedCardId(null);
-    setTurnMessage(
-      fromIdx === 0
-        ? `Passing 1 secret card to ${toPlayer.name}... Waiting for clockwise pass to cycle.`
-        : `${fromPlayer.avatar} ${fromPlayer.name} passes 1 secret card to ${toPlayer.name}...`
-    );
+    const passMsg = fromPlayer.isHuman
+      ? `Passing 1 secret card to ${toPlayer.name}... Waiting for clockwise pass to cycle.`
+      : `${fromPlayer.avatar} ${fromPlayer.name} passes 1 secret card to ${toPlayer.name}...`;
+    setTurnMessage(passMsg);
+
+    if (playType === 'multiplayer' && currentRoom) {
+      updateMultiplayerRoom(currentRoom.id, {
+        players: updatedPlayers,
+        activeTransfer: transferData,
+        currentStep: 'passing',
+        activePlayerIdx: fromIdx,
+        turnMessage: passMsg,
+      }).catch(console.warn);
+    }
 
     // Animate flight to receiver
     timerRef.current = setTimeout(() => {
@@ -646,55 +684,39 @@ export const QuartetClashGame: React.FC = () => {
       // Did the card return to the round starter?
       const isCycleComplete = toIdx === starterIdx;
 
-      if (isCycleComplete) {
-        // Starter originally started with 4, dropped to 3, and now holds 4 again!
-        // The full cycle is complete.
-        if (toIdx === 0) {
-          const prevPlayer = afterArrivalList[(playerCount - 1) % playerCount];
-          sound.playQuartetSuccess();
-          setReceivedCardId(cardToPass.id);
-          setCurrentStep('user_turn');
-          setActivePlayerIdx(0);
-          setAutoPassSecondsLeft(AUTO_PASS_SECONDS);
-          setTurnMessage(
-            `Received card from ${prevPlayer.name}! Hand back at 4 cards. Select 1 to start next pass.`
-          );
-        } else {
-          setCurrentStep('bot_deciding');
-          setActivePlayerIdx(toIdx);
-          setTurnMessage(
-            `${toPlayer.avatar} ${toPlayer.name} received final card of the cycle! Initiating next pass...`
-          );
-          timerRef.current = setTimeout(() => {
-            const botCard = pickBotCardToDiscard(updatedToHand);
-            executeSequentialPass(toIdx, botCard, afterArrivalList, roundNum, playerCount);
-          }, decisionDelay);
-        }
+      let nextStep: SequentialStep = 'bot_deciding';
+      let nextMsg = '';
+
+      if (afterArrivalList[toIdx].isHuman) {
+        nextStep = 'user_turn';
+        const prevPlayer = afterArrivalList[(toIdx - 1 + playerCount) % playerCount];
+        const nextPlayer = afterArrivalList[(toIdx + 1) % playerCount];
+        sound.playQuartetSuccess();
+        setReceivedCardId(cardToPass.id);
+        setAutoPassSecondsLeft(AUTO_PASS_SECONDS);
+        nextMsg = isCycleComplete
+          ? `Received card from ${prevPlayer.name}! Hand back at 4 cards. Select 1 to start next pass.`
+          : `Received 1 card from ${prevPlayer.name}! You hold 5 cards in hand. Select 1 card to pass to ${nextPlayer.name}.`;
       } else {
-        // Receiver is NOT starter, so receiver temporarily holds 5 cards and must choose 1 to pass!
-        if (toIdx === 0) {
-          const prevPlayer = afterArrivalList[(toIdx - 1 + playerCount) % playerCount];
-          const nextPlayer = afterArrivalList[(toIdx + 1) % playerCount];
-          sound.playQuartetSuccess();
-          setReceivedCardId(cardToPass.id);
-          setCurrentStep('user_turn');
-          setActivePlayerIdx(0);
-          setAutoPassSecondsLeft(AUTO_PASS_SECONDS);
-          setTurnMessage(
-            `Received 1 card from ${prevPlayer.name}! You hold 5 cards in hand. Select 1 card to pass to ${nextPlayer.name}.`
-          );
-        } else {
-          setCurrentStep('bot_deciding');
-          setActivePlayerIdx(toIdx);
-          const nextTarget = afterArrivalList[(toIdx + 1) % playerCount];
-          setTurnMessage(
-            `${toPlayer.avatar} ${toPlayer.name} has 5 cards in hand! Choosing which to pass to ${nextTarget.name}...`
-          );
-          timerRef.current = setTimeout(() => {
-            const botCard = pickBotCardToDiscard(updatedToHand);
-            executeSequentialPass(toIdx, botCard, afterArrivalList, roundNum, playerCount);
-          }, decisionDelay);
-        }
+        nextStep = 'bot_deciding';
+        const nextTarget = afterArrivalList[(toIdx + 1) % playerCount];
+        nextMsg = isCycleComplete
+          ? `${toPlayer.avatar} ${toPlayer.name} received final card of the cycle! Initiating next pass...`
+          : `${toPlayer.avatar} ${toPlayer.name} has 5 cards in hand! Choosing which to pass to ${nextTarget.name}...`;
+      }
+
+      setCurrentStep(nextStep);
+      setActivePlayerIdx(toIdx);
+      setTurnMessage(nextMsg);
+
+      if (playType === 'multiplayer' && currentRoom) {
+        updateMultiplayerRoom(currentRoom.id, {
+          players: afterArrivalList,
+          activeTransfer: null,
+          currentStep: nextStep,
+          activePlayerIdx: toIdx,
+          turnMessage: nextMsg,
+        }).catch(console.warn);
       }
     }, flightDelay);
   };
@@ -716,14 +738,13 @@ export const QuartetClashGame: React.FC = () => {
 
     const deck = generateDeck(themeId, targetCount);
     const scoreMap = scoreOverrides || cumulativeScores;
-
     const currentRoster = overrideBotPersonas || botPersonas;
 
     const newPlayers: Player[] = [
       {
-        id: 'p1',
+        id: localPlayer.id,
         name: 'You',
-        isHuman: !isBotAutoPlay,
+        isHuman: true,
         hand: deck.slice(0, 4),
         score: scoreMap['p1'] || 0,
         completedQuartets: [],
@@ -753,7 +774,6 @@ export const QuartetClashGame: React.FC = () => {
     const starterPlayer = newPlayers[starterIdx];
     const nextPlayerName = newPlayers[(starterIdx + 1) % targetCount].name;
 
-    // Initial Starter Flow based on starterIdx
     if (starterIdx === 0) {
       setCurrentStep('user_turn');
       setActivePlayerIdx(0);
@@ -766,11 +786,6 @@ export const QuartetClashGame: React.FC = () => {
       setTurnMessage(
         `${starterPlayer.avatar} ${starterPlayer.name} starts Round ${activeRound}! Preparing first clockwise pass...`
       );
-
-      timerRef.current = setTimeout(() => {
-        const botCard = pickBotCardToDiscard(starterPlayer.hand);
-        executeSequentialPass(starterIdx, botCard, newPlayers, activeRound, targetCount);
-      }, decisionDelay);
     }
   };
 
@@ -782,7 +797,6 @@ export const QuartetClashGame: React.FC = () => {
     } catch {
       // ignore
     }
-    // Randomize fresh competitor bot names & avatars for each tournament!
     const freshRoster = [...BOT_ROSTER].sort(() => Math.random() - 0.5).slice(0, 5);
     setBotPersonas(freshRoster);
     setRound(1);
@@ -804,41 +818,110 @@ export const QuartetClashGame: React.FC = () => {
     startNewMatch(currentThemeId, cumulativeScores, round, nextCount);
   };
 
-  // Substitute Player with Bot / Autoplay toggle
-  const toggleBotAutoPlay = () => {
-    const nextVal = !isBotAutoPlay;
-    setIsBotAutoPlay(nextVal);
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === 'p1' ? { ...p, isHuman: !nextVal } : p))
-    );
+  // When a player leaves in multiplayer, replace them with an AI bot so remaining players can continue!
+  const handlePlayerLeaveMatch = async () => {
+    if (playType === 'multiplayer' && currentRoom) {
+      const updatedPlayers = players.map((p) => {
+        if (p.id === localPlayer.id) {
+          return {
+            ...p,
+            isHuman: false,
+            name: `${p.name} (Bot)`,
+            avatar: '🤖',
+          };
+        }
+        return p;
+      });
+      await updateMultiplayerRoom(currentRoom.id, {
+        players: updatedPlayers,
+        turnMessage: `${localPlayer.name} left the room. An AI Bot took over the seat so the match continues!`,
+      }).catch(console.warn);
+      setCurrentRoom(null);
+    }
+    setGameMode('mode_select');
   };
 
-  // Auto-pass countdown timer effect
+  // Real-time listener for multiplayer rooms
   useEffect(() => {
-    if (currentStep !== 'user_turn' || !!resultModal) return;
+    if (!currentRoom?.id || playType !== 'multiplayer') return;
+    const unsub = subscribeToRoom(currentRoom.id, (updatedRoom: RoomData | null) => {
+      if (!updatedRoom) {
+        setCurrentRoom(null);
+        setGameMode('mode_select');
+        return;
+      }
+      setCurrentRoom(updatedRoom);
+      setTablePlayerCount(updatedRoom.tableSize);
+      setCurrentThemeId(updatedRoom.currentThemeId);
+      setRound(updatedRoom.round);
+      setPlayers(updatedRoom.players);
+      setActivePlayerIdx(updatedRoom.activePlayerIdx);
+      setActiveTransfer(updatedRoom.activeTransfer);
+      setCurrentStep(updatedRoom.currentStep as SequentialStep);
+      setTurnMessage(updatedRoom.turnMessage);
+      if (updatedRoom.resultModal) {
+        setResultModal(updatedRoom.resultModal);
+      }
 
-    if (isBotAutoPlay) {
-      // Bot is currently taking over for human player
-      const autoTimer = setTimeout(() => {
-        const user = players[0];
-        if (user && user.hand.length > 0) {
-          const autoDiscard = pickBotCardToDiscard(user.hand);
-          handleUserPassCard(autoDiscard);
-        }
-      }, 550);
-      return () => clearTimeout(autoTimer);
+      if (updatedRoom.status === 'playing' && gameMode !== 'playing') {
+        setGameMode('playing');
+      }
+    });
+
+    return () => unsub();
+  }, [currentRoom?.id, playType, gameMode]);
+
+  // Robust, reliable bot turn engine (guarantees Chloe and all bots pass their cards without stalling)
+  useEffect(() => {
+    if (gameMode !== 'playing' || currentStep !== 'bot_deciding' || resultModal || activeTransfer) return;
+    const bot = players[activePlayerIdx];
+    if (!bot || bot.isHuman) return;
+
+    // In multiplayer, only the host coordinates bot moves to avoid race conditions
+    if (playType === 'multiplayer' && currentRoom && currentRoom.hostId !== localPlayer.id) {
+      return;
     }
 
-    // Normal player timer: countdown from 15 seconds
+    const timer = setTimeout(() => {
+      if (bot.hand && bot.hand.length > 0) {
+        const botCard = pickBotCardToDiscard(bot.hand);
+        executeSequentialPass(activePlayerIdx, botCard, players, round, tablePlayerCount);
+      }
+    }, decisionDelay);
+
+    return () => clearTimeout(timer);
+  }, [
+    gameMode,
+    currentStep,
+    activePlayerIdx,
+    resultModal,
+    activeTransfer,
+    players,
+    round,
+    tablePlayerCount,
+    decisionDelay,
+    playType,
+    currentRoom,
+    localPlayer.id,
+  ]);
+
+  // Auto-pass countdown timer for active human player: 15 seconds
+  useEffect(() => {
+    if (gameMode !== 'playing' || resultModal || currentStep !== 'user_turn' || activeTransfer) return;
+    const human = players[activePlayerIdx];
+    if (!human || !human.isHuman) return;
+
+    // In multiplayer, only tick timer if it's the local player's turn
+    if (playType === 'multiplayer' && human.id !== localPlayer.id) return;
+    if (playType === 'single' && activePlayerIdx !== 0) return;
+
     setAutoPassSecondsLeft(AUTO_PASS_SECONDS);
     const interval = setInterval(() => {
       setAutoPassSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          // Time expired! Auto pass card with least count
-          const user = players[0];
-          if (user && user.hand.length > 0) {
-            const autoDiscard = pickBotCardToDiscard(user.hand);
+          if (human.hand && human.hand.length > 0) {
+            const autoDiscard = pickBotCardToDiscard(human.hand);
             sound.playPassCard();
             handleUserPassCard(autoDiscard);
           }
@@ -849,14 +932,7 @@ export const QuartetClashGame: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentStep, resultModal, isBotAutoPlay, players]);
-
-  useEffect(() => {
-    startNewMatch(currentThemeId, cumulativeScores, round, tablePlayerCount);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [currentThemeId]);
+  }, [gameMode, currentStep, activePlayerIdx, resultModal, activeTransfer, players, playType, localPlayer.id]);
 
   const toggleSound = () => {
     const next = !soundEnabled;
@@ -868,12 +944,194 @@ export const QuartetClashGame: React.FC = () => {
   const handleUserPassCard = (cardToPassOverride?: Card) => {
     if (currentStep !== 'user_turn' || resultModal) return;
 
-    const user = players[0];
+    const myIdx = playType === 'multiplayer'
+      ? players.findIndex((p) => p.id === localPlayer.id)
+      : activePlayerIdx;
+
+    const user = players[myIdx >= 0 ? myIdx : 0];
+    if (!user) return;
+
     const cardToPass =
       cardToPassOverride || user.hand.find((c) => c.id === selectedCardId);
     if (!cardToPass) return;
 
-    executeSequentialPass(0, cardToPass, players, round, tablePlayerCount);
+    executeSequentialPass(myIdx >= 0 ? myIdx : 0, cardToPass, players, round, tablePlayerCount);
+  };
+
+  // Start Single Player with specified bot count (3, 4, or 5 bots)
+  const handleSelectBotCountAndStart = (botsCount: number) => {
+    const totalPlayers = botsCount + 1;
+    setPlayType('single');
+    setCurrentRoom(null);
+    setTablePlayerCount(totalPlayers);
+    startNewMatch(currentThemeId, cumulativeScores, 1, totalPlayers);
+    setGameMode('playing');
+  };
+
+  // Host creates a new multiplayer room in Firebase
+  const handleCreateRoom = async () => {
+    setIsLobbyLoading(true);
+    setJoinError(null);
+    try {
+      const code = generateRoomCode();
+      const initialDeck = generateDeck(currentThemeId, tablePlayerCount);
+      const hostPlayer: Player = {
+        id: localPlayer.id,
+        name: localPlayer.name || 'Host',
+        isHuman: true,
+        hand: initialDeck.slice(0, 4),
+        score: 0,
+        completedQuartets: [],
+        avatar: '🤠',
+      };
+      const room: RoomData = {
+        id: code,
+        roomCode: code,
+        hostId: localPlayer.id,
+        hostName: localPlayer.name || 'Host',
+        status: 'lobby',
+        tableSize: tablePlayerCount,
+        currentThemeId,
+        round: 1,
+        activePlayerIdx: 0,
+        starterIdx: 0,
+        turnMessage: 'Waiting for players in lobby...',
+        currentStep: 'user_turn',
+        players: [hostPlayer],
+        activeTransfer: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await createMultiplayerRoom(room);
+      setCurrentRoom(room);
+      setPlayType('multiplayer');
+      setGameMode('multiplayer_lobby');
+    } catch (err: any) {
+      setJoinError('Failed to create room: ' + (err.message || 'Error'));
+    } finally {
+      setIsLobbyLoading(false);
+    }
+  };
+
+  // Player joins an existing room by code
+  const handleJoinRoom = async () => {
+    if (!joinCodeInput.trim()) {
+      setJoinError('Please enter a room code.');
+      return;
+    }
+    setIsLobbyLoading(true);
+    setJoinError(null);
+    try {
+      const room = await findRoomByCode(joinCodeInput);
+      if (!room) {
+        setJoinError('Room not found. Please verify the code.');
+        setIsLobbyLoading(false);
+        return;
+      }
+      if (room.status === 'playing') {
+        setJoinError('Tournament is already in progress.');
+        setIsLobbyLoading(false);
+        return;
+      }
+      const existing = room.players.find((p: Player) => p.id === localPlayer.id);
+      if (!existing) {
+        if (room.players.length >= room.tableSize) {
+          setJoinError(`Room is full (${room.tableSize}/${room.tableSize} players).`);
+          setIsLobbyLoading(false);
+          return;
+        }
+        const avatars = ['🦊', '🐯', '🐼', '🦁', '🦉', '🚀', '⚡'];
+        const avatar = avatars[room.players.length % avatars.length];
+        const newPlayer: Player = {
+          id: localPlayer.id,
+          name: `Player ${room.players.length + 1}`,
+          isHuman: true,
+          hand: [],
+          score: 0,
+          completedQuartets: [],
+          avatar,
+        };
+        const updatedPlayers = [...room.players, newPlayer];
+        await updateMultiplayerRoom(room.id, {
+          players: updatedPlayers,
+        });
+        room.players = updatedPlayers;
+      }
+      setCurrentRoom(room);
+      setTablePlayerCount(room.tableSize);
+      setCurrentThemeId(room.currentThemeId);
+      setPlayType('multiplayer');
+      setGameMode('multiplayer_lobby');
+    } catch (err: any) {
+      setJoinError('Failed to join room: ' + (err.message || 'Error'));
+    } finally {
+      setIsLobbyLoading(false);
+    }
+  };
+
+  // Host starts the multiplayer match, filling empty slots with bots
+  const handleStartMultiplayerMatch = async () => {
+    if (!currentRoom || currentRoom.hostId !== localPlayer.id) return;
+    setIsLobbyLoading(true);
+    try {
+      const targetSize = currentRoom.tableSize;
+      const deck = generateDeck(currentThemeId, targetSize);
+      const updatedPlayers = [...currentRoom.players];
+
+      // Fill remaining seats with bots
+      let botIdx = 0;
+      while (updatedPlayers.length < targetSize) {
+        const persona = botPersonas[botIdx % botPersonas.length];
+        updatedPlayers.push({
+          id: `bot_${botIdx + 1}`,
+          name: persona.name,
+          isHuman: false,
+          hand: [],
+          score: 0,
+          completedQuartets: [],
+          avatar: persona.avatar,
+        });
+        botIdx++;
+      }
+
+      // Deal 4 cards to each player
+      const dealtPlayers = updatedPlayers.map((p, idx) => ({
+        ...p,
+        hand: deck.slice(idx * 4, (idx + 1) * 4),
+      }));
+
+      const starterPlayer = dealtPlayers[0];
+      const nextPlayerName = dealtPlayers[1]?.name || 'Next';
+
+      await updateMultiplayerRoom(currentRoom.id, {
+        status: 'playing',
+        players: dealtPlayers,
+        round: 1,
+        starterIdx: 0,
+        activePlayerIdx: 0,
+        currentStep: 'user_turn',
+        turnMessage: `Round 1 started! ${starterPlayer.name} has the dealer button. Select 1 card to pass to ${nextPlayerName}.`,
+        activeTransfer: null,
+        resultModal: null,
+      });
+
+      setPlayers(dealtPlayers);
+      setRound(1);
+      setCurrentStep('user_turn');
+      setActivePlayerIdx(0);
+      setGameMode('playing');
+    } catch (err: any) {
+      setJoinError('Failed to launch tournament: ' + (err.message || 'Error'));
+    } finally {
+      setIsLobbyLoading(false);
+    }
+  };
+
+  const handleCopyRoomCode = () => {
+    if (!currentRoom?.roomCode) return;
+    navigator.clipboard?.writeText(currentRoom.roomCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   // Single click: select / deselect card
@@ -946,6 +1204,743 @@ export const QuartetClashGame: React.FC = () => {
 
   // Is someone in the middle of a transfer?
   const isTransferring = currentStep !== 'user_turn';
+
+  // Render Non-Playing Screens: Mode Select, Bot Count Select, Multiplayer Setup, Multiplayer Lobby
+  if (gameMode !== 'playing') {
+    return (
+      <div className="flex-1 flex flex-col justify-between max-w-4xl mx-auto w-full p-4 sm:p-6 gap-6 relative select-none">
+        {/* Top Header */}
+        <header className="bg-slate-900/90 border border-emerald-900/50 rounded-2xl px-4 py-3 flex items-center justify-between shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('games')}
+              className="text-slate-400 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" /> Games Hub
+            </button>
+            <div className="h-4 w-px bg-slate-800" />
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⚡</span>
+              <span className="text-sm font-extrabold bg-gradient-to-r from-emerald-300 to-amber-200 bg-clip-text text-transparent">
+                Quartet Clash
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRules(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 flex items-center gap-1 cursor-pointer transition"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Rules</span>
+            </button>
+            <button
+              onClick={() => setShowVault(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold border border-slate-700 flex items-center gap-1 cursor-pointer transition"
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Vault</span>
+            </button>
+            <button
+              onClick={toggleSound}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+          </div>
+        </header>
+
+        {/* 1. Mode Select Screen */}
+        {gameMode === 'mode_select' && (
+          <div className="space-y-6 animate-fadeIn py-2">
+            {/* Hero Banner */}
+            <div className="text-center space-y-2 py-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold uppercase tracking-wider mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Real-Time 4-of-a-Kind Card Game</span>
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-white via-emerald-100 to-amber-200 bg-clip-text text-transparent">
+                Choose Game Mode
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
+                Collect 4 matching cards to score a Quartet (100 pts). Pass 1 secret card clockwise each turn!
+              </p>
+            </div>
+
+            {/* Mode Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Single Player Card */}
+              <div
+                onClick={() => setGameMode('bot_select')}
+                className="group bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-6 flex flex-col justify-between shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 cursor-pointer relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition" />
+                <div className="space-y-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    🤖
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white group-hover:text-emerald-300 transition flex items-center gap-2">
+                      Single Player
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
+                        vs AI Bots
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                      Compete against smart AI rivals with randomized personalities. Choose between 3, 4, or 5 bots (4 to 6 players total).
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">
+                      Offline Ready
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">
+                      Instant Start
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">
+                      4 to 6 Players
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-6 relative z-10">
+                  <button className="w-full py-2.5 rounded-xl bg-emerald-500 group-hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition cursor-pointer">
+                    <span>Select Bots & Play</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Online Multiplayer Card */}
+              <div
+                onClick={() => {
+                  setMultiplayerTab('create');
+                  setGameMode('multiplayer_setup');
+                }}
+                className="group bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-indigo-500/60 rounded-2xl p-6 flex flex-col justify-between shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/15 transition" />
+                <div className="space-y-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    🌐
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white group-hover:text-indigo-300 transition flex items-center gap-2">
+                      Online Multiplayer
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono">
+                        Real-Time
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                      Host a room with a shareable code or join your friends live. Empty seats or disconnected players are seamlessly substituted by AI bots!
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">
+                      Firebase Sync
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">
+                      6-Digit Code
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">
+                      Bot Substitutes
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-6 relative z-10">
+                  <button className="w-full py-2.5 rounded-xl bg-indigo-600 group-hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20 transition cursor-pointer">
+                    <span>Host or Join Room</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Scoring Reference */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-around gap-3 text-center">
+              <div>
+                <div className="text-xs font-bold text-amber-400">Quartet (4 Same)</div>
+                <div className="text-sm font-mono font-black text-white">100 Pts (Win)</div>
+              </div>
+              <div className="h-6 w-px bg-slate-800" />
+              <div>
+                <div className="text-xs font-bold text-orange-400">Triple (3 Same)</div>
+                <div className="text-sm font-mono font-black text-white">75 Pts</div>
+              </div>
+              <div className="h-6 w-px bg-slate-800" />
+              <div>
+                <div className="text-xs font-bold text-emerald-400">One Pair (2 Same)</div>
+                <div className="text-sm font-mono font-black text-white">50 Pts</div>
+              </div>
+              <div className="h-6 w-px bg-slate-800" />
+              <div>
+                <div className="text-xs font-bold text-slate-400">Singles</div>
+                <div className="text-sm font-mono font-black text-slate-500">0 Pts</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Bot Count Selection Screen (Single Player) */}
+        {gameMode === 'bot_select' && (
+          <div className="max-w-xl mx-auto w-full bg-slate-900/95 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-emerald-400" /> Single Player Setup
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Select how many bot competitors to seat at the table
+                </p>
+              </div>
+              <button
+                onClick={() => setGameMode('mode_select')}
+                className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back
+              </button>
+            </div>
+
+            {/* Bot Count Radio Cards */}
+            <div className="space-y-3">
+              {[
+                {
+                  bots: 3,
+                  players: 4,
+                  label: '3 Bots (4 Players total)',
+                  desc: 'Classic speed • Fast turns • 16 cards in deck',
+                  badge: 'Fast Pace',
+                },
+                {
+                  bots: 4,
+                  players: 5,
+                  label: '4 Bots (5 Players total)',
+                  desc: 'Strategic balance • Moderate rounds • 20 cards in deck',
+                  badge: 'Balanced',
+                },
+                {
+                  bots: 5,
+                  players: 6,
+                  label: '5 Bots (6 Players total)',
+                  desc: 'Optimum quartet density • Rich hand dynamics • 24 cards in deck',
+                  badge: 'Recommended',
+                },
+              ].map((opt) => (
+                <div
+                  key={opt.bots}
+                  onClick={() => setSelectedBotCount(opt.bots)}
+                  className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    selectedBotCount === opt.bots
+                      ? 'bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/30'
+                      : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white">{opt.label}</span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                          opt.bots === 5
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {opt.badge}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">{opt.desc}</p>
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedBotCount === opt.bots
+                        ? 'border-emerald-400 bg-emerald-500'
+                        : 'border-slate-700'
+                    }`}
+                  >
+                    {selectedBotCount === opt.bots && <Check className="w-3 h-3 text-slate-950 stroke-[3]" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Theme Selector */}
+            <div className="space-y-1.5 pt-2">
+              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Deck Theme
+              </label>
+              <select
+                value={currentThemeId}
+                onChange={(e) => setCurrentThemeId(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
+              >
+                {DECK_THEMES.map((th) => (
+                  <option key={th.id} value={th.id}>
+                    {th.name} ({th.items.slice(0, selectedBotCount + 1).map((i) => i.icon).join(' ')})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Launch Button */}
+            <div className="pt-2 flex items-center justify-between gap-3">
+              <button
+                onClick={() => setGameMode('mode_select')}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSelectBotCountAndStart(selectedBotCount)}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs sm:text-sm tracking-wide shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer transition"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>Start Match with {selectedBotCount} Bots</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Multiplayer Setup Screen (Host / Join) */}
+        {gameMode === 'multiplayer_setup' && (
+          <div className="max-w-xl mx-auto w-full bg-slate-900/95 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-indigo-400" /> Online Multiplayer
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Play with friends across any phone, tablet, or computer
+                </p>
+              </div>
+              <button
+                onClick={() => setGameMode('mode_select')}
+                className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back
+              </button>
+            </div>
+
+            {/* Tab Selector */}
+            <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+              <button
+                onClick={() => {
+                  setMultiplayerTab('create');
+                  setJoinError(null);
+                }}
+                className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  multiplayerTab === 'create'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" /> Host New Room
+              </button>
+              <button
+                onClick={() => {
+                  setMultiplayerTab('join');
+                  setJoinError(null);
+                }}
+                className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  multiplayerTab === 'join'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" /> Join Room Code
+              </button>
+            </div>
+
+            {/* Error Message */}
+            {joinError && (
+              <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <X className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{joinError}</span>
+              </div>
+            )}
+
+            {/* Host Room Tab Content */}
+            {multiplayerTab === 'create' ? (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Table Capacity (4 to 6 Players)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[4, 5, 6].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setTablePlayerCount(size)}
+                        className={`p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                          tablePlayerCount === size
+                            ? 'bg-indigo-950/60 border-indigo-400 text-indigo-300 ring-2 ring-indigo-500/30'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        {size} Players
+                        {size === 6 && (
+                          <div className="text-[9px] text-amber-300 font-normal">Optimum</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Initial Deck Theme
+                  </label>
+                  <select
+                    value={currentThemeId}
+                    onChange={(e) => setCurrentThemeId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {DECK_THEMES.map((th) => (
+                      <option key={th.id} value={th.id}>
+                        {th.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 space-y-1">
+                  <div className="font-bold text-slate-300 flex items-center gap-1.5">
+                    <Bot className="w-3.5 h-3.5 text-indigo-400" /> Automatic Bot Fill & Substitution
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    If fewer friends join before you click Start, empty seats are automatically filled by AI Bots. If any player leaves mid-match, an AI bot takes over their seat so others can keep playing!
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleCreateRoom}
+                  disabled={isLobbyLoading}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-50 text-white font-black text-sm tracking-wide shadow-xl shadow-indigo-600/25 flex items-center justify-center gap-2 cursor-pointer transition"
+                >
+                  {isLobbyLoading ? (
+                    <span>Creating Room...</span>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Create Room & Open Lobby</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* Join Room Tab Content */
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Enter 6-Letter Room Code</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={joinCodeInput}
+                    onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                    placeholder="e.g. QCK792"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono font-black text-xl text-emerald-300 tracking-widest uppercase focus:outline-none focus:border-indigo-500 placeholder:text-slate-600"
+                  />
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400">
+                  Ask the host for the 6-letter room code shown in their lobby.
+                </div>
+
+                <button
+                  onClick={handleJoinRoom}
+                  disabled={isLobbyLoading || !joinCodeInput.trim()}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-sm tracking-wide shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer transition"
+                >
+                  {isLobbyLoading ? (
+                    <span>Joining Room...</span>
+                  ) : (
+                    <>
+                      <Users className="w-4 h-4" />
+                      <span>Join Tournament Room</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. Multiplayer Lobby Screen */}
+        {gameMode === 'multiplayer_lobby' && currentRoom && (
+          <div className="max-w-xl mx-auto w-full bg-slate-900/95 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 animate-fadeIn">
+            {/* Header with Room Code & Share */}
+            <div className="text-center space-y-3 pb-4 border-b border-slate-800">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 uppercase tracking-wider font-mono">
+                <Globe className="w-3.5 h-3.5" /> Room Code
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-3xl sm:text-4xl font-mono font-black tracking-widest text-white px-4 py-1.5 rounded-xl bg-slate-950 border border-indigo-500/40 shadow-inner">
+                  {currentRoom.roomCode}
+                </span>
+                <button
+                  onClick={handleCopyRoomCode}
+                  className="px-3 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition"
+                  title="Copy room code to clipboard"
+                >
+                  {copiedCode ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-slate-400">
+                Share this code with friends to join the tournament on their device
+              </p>
+            </div>
+
+            {/* Joined Players Roster */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-300 px-1">
+                <span>
+                  Seated Players ({currentRoom.players.length} / {currentRoom.tableSize})
+                </span>
+                <span className="text-[10px] text-amber-400 font-mono">
+                  {currentRoom.players.length === currentRoom.tableSize
+                    ? 'Table Full'
+                    : `${currentRoom.tableSize - currentRoom.players.length} Bot(s) will fill remaining seats`}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {Array.from({ length: currentRoom.tableSize }).map((_, seatIdx) => {
+                  const player = currentRoom.players[seatIdx];
+                  if (player) {
+                    const isHost = player.id === currentRoom.hostId;
+                    const isMe = player.id === localPlayer.id;
+                    return (
+                      <div
+                        key={player.id}
+                        className={`p-3 rounded-xl border flex items-center justify-between ${
+                          isMe
+                            ? 'bg-emerald-950/30 border-emerald-500/50'
+                            : 'bg-slate-950/80 border-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{player.avatar}</span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white">{player.name}</span>
+                              {isHost && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/30 flex items-center gap-1">
+                                  <Crown className="w-2.5 h-2.5 text-amber-400" /> HOST
+                                </span>
+                              )}
+                              {isMe && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
+                                  YOU
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              Seat #{seatIdx + 1} • Ready
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      </div>
+                    );
+                  }
+
+                  // Empty seat placeholder
+                  return (
+                    <div
+                      key={`empty_${seatIdx}`}
+                      className="p-3 rounded-xl border border-dashed border-slate-800 bg-slate-950/40 flex items-center justify-between text-slate-500"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl opacity-40">🤖</span>
+                        <div>
+                          <div className="text-xs font-bold text-slate-500">
+                            Seat #{seatIdx + 1} (AI Bot Seat)
+                          </div>
+                          <span className="text-[10px] text-slate-600 font-mono">
+                            Will be filled automatically when match starts
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-600">Open</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Host or Guest Controls */}
+            {currentRoom.hostId === localPlayer.id ? (
+              <div className="space-y-3 pt-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Theme for Tournament
+                  </label>
+                  <select
+                    value={currentThemeId}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setCurrentThemeId(newId);
+                      updateMultiplayerRoom(currentRoom.id, { currentThemeId: newId }).catch(console.warn);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {DECK_THEMES.map((th) => (
+                      <option key={th.id} value={th.id}>
+                        {th.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={handlePlayerLeaveMatch}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-300 text-xs font-semibold cursor-pointer transition"
+                  >
+                    Cancel Lobby
+                  </button>
+                  <button
+                    onClick={handleStartMultiplayerMatch}
+                    disabled={isLobbyLoading}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-slate-950 font-black text-xs sm:text-sm tracking-wide shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer transition"
+                  >
+                    {isLobbyLoading ? (
+                      <span>Starting...</span>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>Start Tournament ({currentRoom.players.length}/{currentRoom.tableSize} Joined)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30 flex items-center gap-3 text-indigo-300 text-xs">
+                  <div className="w-3 h-3 rounded-full bg-indigo-400 animate-ping" />
+                  <span>
+                    Waiting for Host (<strong>{currentRoom.hostName}</strong>) to launch the tournament...
+                  </span>
+                </div>
+                <button
+                  onClick={handlePlayerLeaveMatch}
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-300 text-xs font-semibold cursor-pointer transition"
+                >
+                  Leave Lobby
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Rules Modal (also available from menus) */}
+        {showRules && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-amber-400" /> Sequential Passing & Scoring Rules
+                </h3>
+                <button onClick={() => setShowRules(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="text-xs sm:text-sm text-slate-300 space-y-3 leading-relaxed">
+                <p>
+                  <strong>Sequential 1-by-1 Flow:</strong> Cards are passed one at a time clockwise around the table! Each new match is started by the next player in line.
+                </p>
+                <ol className="list-decimal pl-5 space-y-1.5 text-slate-400">
+                  <li>
+                    <strong className="text-white">Starting the Match:</strong> The round starter begins with 4 cards, selects 1 card to pass secretly, and drops to 3 cards waiting for the circle to complete.
+                  </li>
+                  <li>
+                    <strong className="text-white">Receiving & Deciding:</strong> Each clockwise receiver accepts the card, temporarily holding <strong>5 cards</strong> in hand. They inspect their hand and pass the 1 unwanted card forward, returning to 4 cards.
+                  </li>
+                  <li>
+                    <strong className="text-white">Fast Pass & Auto-Pass:</strong> Double-clicking any card passes it immediately! If a player does not pass within 15 seconds, a card with least count is automatically passed.
+                  </li>
+                  <li>
+                    <strong className="text-white">Bot Replacement:</strong> If a player leaves an online match, an AI bot takes over their seat so the remaining players can finish the match smoothly.
+                  </li>
+                </ol>
+
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4 text-amber-400" /> Round End Scoring System
+                  </div>
+                  <ul className="text-xs text-slate-300 space-y-1 pl-1">
+                    <li>• <strong className="text-amber-400">Quartet (4 same cards):</strong> <strong>100 points</strong> (Winner)</li>
+                    <li>• <strong className="text-orange-400">Triple (3 same cards):</strong> <strong>75 points</strong></li>
+                    <li>• <strong className="text-emerald-400">One Pair (2 same cards):</strong> <strong>50 points</strong> <em>(Only one pair is counted for score)</em></li>
+                    <li>• <strong className="text-slate-400">Singles (no match):</strong> <strong>0 points</strong> <em>(No points awarded for singles)</em></li>
+                  </ul>
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setShowRules(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Got It
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Card Vault Modal */}
+        {showVault && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <Archive className="w-5 h-5 text-amber-400" /> Card Vault - {currentTheme.name}
+                </h3>
+                <button onClick={() => setShowVault(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-4 gap-3 p-1">
+                {currentTheme.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-center space-y-2"
+                  >
+                    <div className="text-3xl">{item.icon}</div>
+                    <div className="text-xs font-bold text-white">{item.name}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">4 Cards in Deck</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-slate-800">
+                <button
+                  onClick={() => setShowVault(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Close Vault
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col justify-between max-w-6xl mx-auto w-full p-3 sm:p-5 gap-4 relative select-none">
@@ -1063,20 +2058,29 @@ export const QuartetClashGame: React.FC = () => {
             </button>
           </div>
 
-          {/* Bot Takeover / Substitute Toggle */}
-          <button
-            onClick={toggleBotAutoPlay}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition ${
-              isBotAutoPlay
-                ? 'bg-purple-500/25 text-purple-300 border-purple-500/50 shadow-sm animate-pulse'
-                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-            }`}
-            title="Let an intelligent bot take over your turns (or toggle auto-substitute)"
-          >
-            <Bot className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Bot Takeover:</span>
-            <span>{isBotAutoPlay ? 'AUTO ON' : 'OFF'}</span>
-          </button>
+          {/* Multiplayer Room Badge & Leave / Menu Button */}
+          {playType === 'multiplayer' && currentRoom ? (
+            <div className="flex items-center gap-1.5 bg-indigo-950/80 border border-indigo-700/60 rounded-lg px-2.5 py-1 text-xs">
+              <Globe className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="font-mono font-bold text-indigo-200">Room: {currentRoom.roomCode}</span>
+              <button
+                onClick={handlePlayerLeaveMatch}
+                className="ml-1 text-rose-400 hover:text-rose-300 font-semibold cursor-pointer text-[11px]"
+                title="Leave match (an AI Bot will replace you so the tournament continues)"
+              >
+                Leave
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setGameMode('mode_select')}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 flex items-center gap-1 cursor-pointer transition"
+              title="Return to Mode Select"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Menu</span>
+            </button>
+          )}
 
           <button
             onClick={() => setShowVault(true)}
@@ -1323,8 +2327,8 @@ export const QuartetClashGame: React.FC = () => {
         </div>
       </div>
 
-      {/* Center Table Area with SECRET SINGLE-CARD In-Flight Passing Animation */}
-      <div className="relative rounded-2xl bg-gradient-to-r from-slate-900/95 via-indigo-950/40 to-slate-900/95 border border-indigo-900/50 p-4 shadow-inner min-h-[140px] flex flex-col justify-center">
+      {/* Center Table Area with SECRET SINGLE-CARD In-Flight Passing Animation (Fixed Strict Height) */}
+      <div className="relative rounded-2xl bg-gradient-to-r from-slate-900/95 via-indigo-950/40 to-slate-900/95 border border-indigo-900/50 p-4 shadow-inner h-44 sm:h-48 w-full max-w-full overflow-hidden shrink-0 flex flex-col justify-center">
         {activeTransfer ? (
           /* Live Secret Single Card in Motion */
           <div className="py-2 flex flex-col items-center justify-center space-y-2">
@@ -1379,7 +2383,7 @@ export const QuartetClashGame: React.FC = () => {
             </div>
 
             {showStatusReports && (
-              <div className="text-[10px] font-mono text-slate-400">
+              <div className="text-[10px] font-mono text-slate-400 truncate max-w-full">
                 Cards in flight are kept secret. Receiver inspects all 5 cards and passes the one they do not want.
               </div>
             )}
@@ -1388,46 +2392,41 @@ export const QuartetClashGame: React.FC = () => {
           /* Normal State: User Turn Ready to Pass 1 Card */
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xl">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xl shrink-0">
                 🃏
               </div>
               <div>
                 <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2 flex-wrap">
                   <span>
                     {selectedCardId
-                      ? `Selected card ready to pass to ${players[1]?.name || 'next player'}`
+                      ? `Selected card ready to pass to ${players[(activePlayerIdx + 1) % tablePlayerCount]?.name || 'next player'}`
                       : humanPlayer?.hand.length === 5
-                      ? `You hold 5 cards! Select 1 unwanted card to pass to ${players[1]?.name || 'next player'}`
-                      : `Choose 1 card from your hand to pass to ${players[1]?.name || 'next player'}`}
+                      ? `You hold 5 cards! Select 1 unwanted card to pass to ${players[(activePlayerIdx + 1) % tablePlayerCount]?.name || 'next player'}`
+                      : `Choose 1 card from your hand to pass to ${players[(activePlayerIdx + 1) % tablePlayerCount]?.name || 'next player'}`}
                   </span>
                   {selectedCardId && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-mono border border-amber-400/40">
                       Card Picked
                     </span>
                   )}
-                  {isBotAutoPlay && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono border border-purple-500/40 animate-pulse">
-                      Bot Autoplay Active
-                    </span>
-                  )}
                 </div>
                 {showStatusReports && (
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap truncate max-w-full">
                     <span>
-                      Clockwise rotation: You ➔ {players.slice(1).map((p) => p.name).join(' ➔ ')} ➔ You. Passing 1 card leaves you with 4 cards.
+                      Clockwise rotation: Passing 1 card brings your hand to 4 cards.
                     </span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => handleUserPassCard()}
                 disabled={!selectedCardId || !!resultModal}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs sm:text-sm tracking-wide shadow-lg shadow-amber-500/20 flex items-center gap-2 transition cursor-pointer"
               >
-                <span>Pass 1 Card to {players[1]?.name || 'Next'}</span>
+                <span>Pass 1 Card to {players[(activePlayerIdx + 1) % tablePlayerCount]?.name || 'Next'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

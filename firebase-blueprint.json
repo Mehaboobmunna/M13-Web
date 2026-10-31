@@ -1,0 +1,33 @@
+{
+  "entities": {
+    "rooms": {
+      "title": "Room",
+      "description": "Multiplayer match rooms for Quartet Clash",
+      "properties": {
+        "roomCode": { "type": "string" },
+        "hostId": { "type": "string" },
+        "hostName": { "type": "string" },
+        "status": { "type": "string" },
+        "tableSize": { "type": "number" },
+        "currentThemeId": { "type": "string" },
+        "round": { "type": "number" },
+        "activePlayerIdx": { "type": "number" },
+        "starterIdx": { "type": "number" },
+        "turnMessage": { "type": "string" },
+        "currentStep": { "type": "string" },
+        "players": { "type": "array" },
+        "activeTransfer": { "type": "object" },
+        "resultModal": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["roomCode", "hostId", "status", "tableSize"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "entity": "rooms",
+      "description": "Game room for live multiplayer synchronized state"
+    }
+  }
+}
