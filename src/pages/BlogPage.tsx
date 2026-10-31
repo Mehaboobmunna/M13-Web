@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigation } from '../context/NavigationContext';
-import { ArrowLeft, BookOpen, Calendar, Clock, Tag, ChevronRight } from 'lucide-react';
+import { BookOpen, Calendar, Clock, Tag, ChevronRight } from 'lucide-react';
 
 interface Article {
   id: string;
@@ -60,12 +60,6 @@ export const BlogPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-10 flex-1 flex flex-col">
       <header className="mb-8">
-        <button
-          onClick={() => navigate('home')}
-          className="text-slate-400 hover:text-sky-400 transition inline-flex items-center gap-1.5 text-xs font-semibold mb-4 cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
-        </button>
         <div className="flex items-center gap-2">
           <BookOpen className="w-6 h-6 text-amber-400" />
           <h1 className="text-3xl font-extrabold text-white">Engineering Blog</h1>

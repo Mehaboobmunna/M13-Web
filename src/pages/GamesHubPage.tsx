@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigation } from '../context/NavigationContext';
-import { ArrowLeft, ArrowRight, Trophy, Flame } from 'lucide-react';
+import { ArrowRight, Trophy, Flame } from 'lucide-react';
 import { useActivityMetrics } from '../utils/activityMetrics';
 
 export const GamesHubPage: React.FC = () => {
@@ -12,12 +12,6 @@ export const GamesHubPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-10 flex-1 flex flex-col items-center">
       <header className="w-full text-center mb-8">
-        <button
-          onClick={() => navigate('home')}
-          className="text-slate-400 hover:text-sky-400 transition inline-flex items-center gap-1.5 text-sm mb-4 cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Home
-        </button>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-sky-400 mb-2">Web Games</h1>
         <p className="text-slate-400 text-sm max-w-md mx-auto">
           Fast-paced card showdowns, medieval deduction conclaves, and AI-powered table battles.

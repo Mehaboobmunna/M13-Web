@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigation } from '../context/NavigationContext';
-import { ArrowLeft, Clock, FolderOpen, PenTool, Ruler, ArrowRight, History } from 'lucide-react';
+import { Clock, FolderOpen, PenTool, Ruler, ArrowRight, History } from 'lucide-react';
 
 export const AppsHubPage: React.FC = () => {
   const { navigate } = useNavigation();
@@ -8,12 +8,6 @@ export const AppsHubPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-10 flex-1 flex flex-col items-center">
       <header className="w-full text-center mb-8">
-        <button
-          onClick={() => navigate('home')}
-          className="text-slate-400 hover:text-sky-400 transition inline-flex items-center gap-1.5 text-sm mb-4 cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Home
-        </button>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-sky-400 mb-2">Web Apps</h1>
         <p className="text-slate-400 text-sm max-w-md mx-auto">
           Minimalist productivity trackers, drawing organizers, file extractors, and imperial calculators.
