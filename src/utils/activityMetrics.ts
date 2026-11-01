@@ -25,14 +25,14 @@ export interface AppActivityMetrics {
 const STORAGE_KEY = 'buildsmith_activity_metrics_v1';
 
 export const DEFAULT_METRICS: AppActivityMetrics = {
-  quartetClashMatches: 142,
-  findTheThiefMatches: 98,
-  pulseTasksNoted: 24,
-  drawingSeriesRequests: 67,
-  fileNameGrabberRequests: 85,
-  transmittalBuilderRequests: 42,
-  formCalculatorCalculations: 119,
-  keypadCalculatorCalculations: 234,
+  quartetClashMatches: 0,
+  findTheThiefMatches: 0,
+  pulseTasksNoted: 0,
+  drawingSeriesRequests: 0,
+  fileNameGrabberRequests: 0,
+  transmittalBuilderRequests: 0,
+  formCalculatorCalculations: 0,
+  keypadCalculatorCalculations: 0,
 };
 
 export function getCachedMetrics(): AppActivityMetrics {

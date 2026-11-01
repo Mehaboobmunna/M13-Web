@@ -608,14 +608,7 @@ export const KeypadImperialCalculatorApp: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto w-full px-3 sm:px-6 py-6 flex-1 flex flex-col gap-5">
       {/* Top Navigation */}
-      <nav className="w-full flex items-center justify-between">
-        <button
-          onClick={() => navigate('apps')}
-          className="text-slate-400 hover:text-white inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Apps Hub
-        </button>
-
+      <nav className="w-full flex items-center justify-end">
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('apps-calculator-history')}

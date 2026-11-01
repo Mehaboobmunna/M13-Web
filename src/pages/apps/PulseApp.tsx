@@ -433,16 +433,6 @@ export const PulseApp: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-8 flex-1 flex flex-col gap-6">
-      {/* Top Nav Back Link */}
-      <nav className="flex items-center gap-2">
-        <button
-          onClick={() => navigate('apps')}
-          className="text-sky-400 hover:underline inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Apps Hub
-        </button>
-      </nav>
-
       {/* Header Bar */}
       <header className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-700/80">
         <div className="flex items-center gap-4">

@@ -76,15 +76,6 @@ export const DrawingSeriesBuilderApp: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 flex-1 flex flex-col gap-6">
-      <nav>
-        <button
-          onClick={() => navigate('apps')}
-          className="text-slate-400 hover:text-white inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Apps Hub
-        </button>
-      </nav>
-
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-700/80 to-blue-600/60 p-6 text-white border-b border-blue-500/20 flex flex-wrap items-center justify-between gap-4">

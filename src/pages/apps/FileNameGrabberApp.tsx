@@ -63,15 +63,6 @@ export const FileNameGrabberApp: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 flex-1 flex flex-col gap-6">
-      <nav>
-        <button
-          onClick={() => navigate('apps')}
-          className="text-sky-400 hover:underline inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Apps Hub
-        </button>
-      </nav>
-
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
