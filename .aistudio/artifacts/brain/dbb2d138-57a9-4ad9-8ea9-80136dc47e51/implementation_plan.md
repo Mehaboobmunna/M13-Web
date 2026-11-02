@@ -1,15 +1,33 @@
-# Implementation Plan - M13 Hypercar Footer Integration
+# Implementation Plan - Pulse Backup Restore Fix & Merging Engine
+
+Fix the restore functionality in the **Pulse** time tracker application to support legacy/alternative backup formats and merge restored data into the current workspace.
+
+## Problem Analysis
+The uploaded backup file (`tracker_full_backup_2026-11-02__1__e7401da5.json`) uses a legacy/alternative schema:
+- Tasks use `title` instead of `name`.
+- Intervals use `durationSeconds` and ISO timestamp strings (`start`, `end`, `lastStartISO`, `lastEndISO`) instead of millisecond timestamps (`start: number`, `end: number`, `duration: number`).
+- Tasks track total time in `accumulatedSeconds`.
+
+When Pulse tries to load this format without normalization:
+1. Task titles appear empty (`t.name` is undefined).
+2. Interval calculations yield `NaN` because `i.duration` is missing.
 
 ## Proposed Changes
 
-### 1. Refine Hypercar Icon (`/src/components/common/HypercarIcon.tsx`)
-- Render a sleek, ultra-clean neon cyan-glowing outline hypercar silhouette vector.
-- Apply high-glow cyan stroke lines (`text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]`).
+### 1. Robust Schema Normalizer (`/src/pages/apps/PulseApp.tsx`)
+Create a backward-compatible parser `normalizePulseBackupData` that:
+- Maps legacy `title` to `name`.
+- Converts ISO timestamp strings in intervals to millisecond numbers (`Date.parse()`).
+- Normalizes interval durations (`durationSeconds` or `duration`) and handles `accumulatedSeconds` gracefully.
+- Ensures all projects have valid `id`, `name`, and `createdAt` timestamps.
 
-### 2. Update Footer Layout (`/src/App.tsx`)
-- Update the bottom footer line to pair `"BuildSmith • Construction Tools, Productivity Apps, Games & Wallpapers"` with the stylized **M13** badge featuring the neon cyan hypercar graphic.
-- Apply sleek dark badge container styling (`bg-slate-900/90 border border-cyan-500/30 rounded-lg px-2.5 py-1`).
+### 2. Workspace Merge Handler (`/src/pages/apps/PulseApp.tsx`)
+- Combine incoming projects with existing projects (preventing duplicate IDs).
+- Combine incoming tasks with existing tasks (preventing duplicate IDs).
+- Set `activeProjectId` to the restored backup's active project if valid.
+- Notify the user with a confirmation message (e.g., `"Successfully merged 4 projects and 3 tasks from backup!"`).
 
 ## Verification Plan
-- Run `compile_applet` and `lint_applet` to ensure type safety and clean build state.
-- Inspect the footer in the preview to confirm the M13 branding with the neon cyan hypercar graphic sits gracefully next to the BuildSmith tagline.
+1. Test restoring the user's uploaded backup JSON file (`tracker_full_backup_2026-11-02__1__e7401da5.json`).
+2. Verify all project names (`General Work`, `1_`, `2`, `3`) and task names (`11`, `21`, `33`) display correctly with accurate accumulated durations.
+3. Run `compile_applet` and `lint_applet` to confirm zero errors or type mismatches.

@@ -17,6 +17,81 @@ import {
   X,
 } from 'lucide-react';
 
+interface NormalizedBackupResult {
+  projects: Project[];
+  tasks: Task[];
+  activeProjectId?: string;
+}
+
+function normalizePulseBackupData(raw: any): NormalizedBackupResult {
+  if (!raw || typeof raw !== 'object') {
+    return { projects: [], tasks: [] };
+  }
+
+  const rawProjects = Array.isArray(raw.projects) ? raw.projects : [];
+  const rawTasks = Array.isArray(raw.tasks) ? raw.tasks : [];
+
+  const projects: Project[] = rawProjects.map((p: any, index: number) => ({
+    id: String(p.id || `proj-restored-${index}-${Date.now()}`),
+    name: String(p.name || p.title || `Restored Project ${index + 1}`),
+    createdAt: typeof p.createdAt === 'number' ? p.createdAt : Date.parse(p.createdAt || '') || Date.now(),
+  }));
+
+  const defaultProjId = projects[0]?.id || 'proj-1';
+
+  const tasks: Task[] = rawTasks.map((t: any, index: number) => {
+    const taskName = String(t.name || t.title || `Task ${index + 1}`);
+    const completed = Boolean(t.completed);
+    const createdAt = typeof t.createdAt === 'number'
+      ? t.createdAt
+      : Date.parse(t.createdAt || t.lastStartISO || '') || Date.now();
+
+    let intervals: any[] = [];
+
+    if (Array.isArray(t.intervals) && t.intervals.length > 0) {
+      intervals = t.intervals.map((i: any) => {
+        const start = typeof i.start === 'number' ? i.start : Date.parse(i.start || '') || Date.now();
+        const end = typeof i.end === 'number' ? i.end : Date.parse(i.end || '') || Date.now();
+
+        let duration = 0;
+        if (typeof i.duration === 'number' && i.duration > 0) {
+          duration = i.duration;
+        } else if (typeof i.durationSeconds === 'number' && i.durationSeconds > 0) {
+          duration = i.durationSeconds;
+        } else if (end > start) {
+          duration = Math.floor((end - start) / 1000);
+        }
+
+        return { start, end, duration };
+      });
+    } else if (typeof t.accumulatedSeconds === 'number' && t.accumulatedSeconds > 0) {
+      const now = Date.now();
+      intervals = [
+        {
+          start: now - t.accumulatedSeconds * 1000,
+          end: now,
+          duration: t.accumulatedSeconds,
+        },
+      ];
+    }
+
+    return {
+      id: String(t.id || `task-restored-${index}-${Date.now()}`),
+      projectId: String(t.projectId || defaultProjId),
+      name: taskName,
+      completed,
+      intervals,
+      createdAt,
+    };
+  });
+
+  return {
+    projects,
+    tasks,
+    activeProjectId: typeof raw.activeProjectId === 'string' ? raw.activeProjectId : undefined,
+  };
+}
+
 const STORAGE_KEY_PROJECTS = 'pulse_projects_v1';
 const STORAGE_KEY_TASKS = 'pulse_tasks_v1';
 const STORAGE_KEY_ACTIVE = 'pulse_active_task_v1';
@@ -391,18 +466,41 @@ export const PulseApp: React.FC = () => {
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        if (Array.isArray(parsed.projects) && Array.isArray(parsed.tasks)) {
-          setProjects(parsed.projects);
-          setTasks(parsed.tasks);
-          setActiveTaskId(null);
-          setActiveTaskStartTime(null);
-          setElapsedActiveSeconds(0);
-          if (parsed.projects.length > 0) {
-            setActiveProjectId(parsed.projects[0].id);
-          }
+        const { projects: restoredProjects, tasks: restoredTasks, activeProjectId: backupActiveProjId } = normalizePulseBackupData(parsed);
+
+        if (restoredProjects.length === 0 && restoredTasks.length === 0) {
+          alert('No valid projects or tasks found in backup file.');
+          return;
         }
-      } catch {
-        alert('Invalid backup JSON file.');
+
+        // Merge Projects by ID
+        let addedProjectsCount = 0;
+        setProjects((prevProjects) => {
+          const existingIds = new Set(prevProjects.map((p) => p.id));
+          const newProjects = restoredProjects.filter((p) => !existingIds.has(p.id));
+          addedProjectsCount = newProjects.length;
+          return [...prevProjects, ...newProjects];
+        });
+
+        // Merge Tasks by ID
+        let addedTasksCount = 0;
+        setTasks((prevTasks) => {
+          const existingIds = new Set(prevTasks.map((t) => t.id));
+          const newTasks = restoredTasks.filter((t) => !existingIds.has(t.id));
+          addedTasksCount = newTasks.length;
+          return [...prevTasks, ...newTasks];
+        });
+
+        if (backupActiveProjId) {
+          setActiveProjectId(backupActiveProjId);
+        } else if (restoredProjects.length > 0) {
+          setActiveProjectId(restoredProjects[0].id);
+        }
+
+        alert(`Successfully merged ${restoredProjects.length} project(s) and ${restoredTasks.length} task(s) into your Pulse workspace!`);
+      } catch (err) {
+        console.error('Backup restore error:', err);
+        alert('Invalid backup JSON file. Please verify the file format.');
       }
     };
     reader.readAsText(file);

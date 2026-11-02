@@ -36,6 +36,26 @@
         "keypadCalculatorCalculations": { "type": "number" },
         "updatedAt": { "type": "string" }
       }
+    },
+    "shared_wallpapers": {
+      "title": "Shared Wallpapers",
+      "description": "Global custom wallpapers visible to all visitors",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "device": { "type": "string" },
+        "resolution": { "type": "string" },
+        "aspect": { "type": "string" },
+        "views": { "type": "number" },
+        "author": { "type": "string" },
+        "url": { "type": "string" },
+        "downloadUrl": { "type": "string" },
+        "tags": { "type": "array" },
+        "palette": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "url"]
     }
   },
   "firestore": {
@@ -46,6 +66,10 @@
     "/analytics/{docId}": {
       "entity": "metrics",
       "description": "Global usage and activity metrics"
+    },
+    "/shared_wallpapers/{wallpaperId}": {
+      "entity": "shared_wallpapers",
+      "description": "Custom wallpapers visible to all visitors"
     }
   }
 }

@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for updating the footer with M13 branding and a sleek neon cyan-glowing outline hypercar graphic next to BuildSmith.",
-  "updatedAt":  "2026-10-31T19:34:53.445273946Z",
-  "requestFeedback":  true,
-  "userFacing":  true
+  "summary": "Implementation plan to fix Pulse backup restore by adding backward-compatible schema normalization and seamless merging into the current workspace.",
+  "updatedAt": "2026-11-02T17:20:42.566767397Z",
+  "requestFeedback": true,
+  "userFacing": true
 }

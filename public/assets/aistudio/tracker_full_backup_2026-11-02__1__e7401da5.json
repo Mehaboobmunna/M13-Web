@@ -1,0 +1,81 @@
+{
+  "activeProjectId": "proj-1793638901749",
+  "hideCompleted": false,
+  "projects": [
+    {
+      "id": "proj-1",
+      "name": "General Work"
+    },
+    {
+      "id": "proj-1792907039851",
+      "name": "1_"
+    },
+    {
+      "id": "proj-1793638870029",
+      "name": "2"
+    },
+    {
+      "id": "proj-1793638901749",
+      "name": "3"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1792907041947",
+      "projectId": "proj-1792907039851",
+      "title": "11",
+      "accumulatedSeconds": 7038,
+      "isRunning": false,
+      "startedAt": null,
+      "currentStartISO": null,
+      "lastStartISO": "2026-10-25T05:44:01.946Z",
+      "lastEndISO": "2026-10-25T16:41:22.782Z",
+      "completed": false,
+      "intervals": [
+        {
+          "start": "2026-10-25T05:44:01.946Z",
+          "end": "2026-10-25T16:41:22.782Z",
+          "durationSeconds": 5
+        }
+      ]
+    },
+    {
+      "id": "task-1793638872469",
+      "projectId": "proj-1793638870029",
+      "title": "21",
+      "accumulatedSeconds": 26,
+      "isRunning": false,
+      "startedAt": null,
+      "currentStartISO": null,
+      "lastStartISO": "2026-11-02T17:01:12.469Z",
+      "lastEndISO": "2026-11-02T17:01:38.845Z",
+      "completed": false,
+      "intervals": [
+        {
+          "start": "2026-11-02T17:01:12.469Z",
+          "end": "2026-11-02T17:01:38.845Z",
+          "durationSeconds": 26
+        }
+      ]
+    },
+    {
+      "id": "task-1793638903725",
+      "projectId": "proj-1793638901749",
+      "title": "33",
+      "accumulatedSeconds": 118,
+      "isRunning": false,
+      "startedAt": null,
+      "currentStartISO": null,
+      "lastStartISO": "2026-11-02T17:01:43.725Z",
+      "lastEndISO": "2026-11-02T17:03:41.949Z",
+      "completed": false,
+      "intervals": [
+        {
+          "start": "2026-11-02T17:01:43.725Z",
+          "end": "2026-11-02T17:03:41.949Z",
+          "durationSeconds": 118
+        }
+      ]
+    }
+  ]
+}

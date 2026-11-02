@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Wallpaper, DeviceFilter, SortOption } from '../types/wallpapers';
+import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../utils/firebase';
 
 import {
   Sparkles,
@@ -8,11 +10,32 @@ import {
   Monitor,
   Download,
   Copy,
-  RotateCcw,
   X,
   Eye,
   Check,
+  Image as ImageIcon,
+  UploadCloud,
+  Trash2,
+  Lock,
+  Edit3,
+  Tag,
+  Save,
+  CheckCircle,
 } from 'lucide-react';
+
+const CATEGORIES = [
+  'All',
+  'Dark / OLED',
+  'Vehicles',
+  'Entertainment',
+  'Minimal',
+  'Nature',
+  'Cyberpunk',
+  'Space',
+  'Abstract',
+  'Anime',
+  'Architecture',
+];
 
 const WALLPAPERS: Wallpaper[] = [
   // 0. OLED Minimalist Special Edition
@@ -87,6 +110,20 @@ const WALLPAPERS: Wallpaper[] = [
     tags: ['vehicles', 'vintage', 'muscle', 'classic', 'mobile'],
     palette: ['#18181b', '#3b82f6', '#71717a', '#f4f4f5'],
   },
+  {
+    id: 'wp-veh-3',
+    title: 'Futuristic Cyber GT Sports Concept',
+    category: 'Vehicles',
+    device: 'desktop',
+    resolution: '3840 x 2160',
+    aspect: '16:9',
+    views: 31800,
+    author: 'Design Works',
+    url: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?q=80&w=2000&auto=format&fit=crop',
+    downloadUrl: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?q=85&w=3840&auto=format&fit=crop',
+    tags: ['vehicles', 'sports', 'futuristic', 'concept', 'gt'],
+    palette: ['#0f172a', '#0284c7', '#38bdf8', '#f8fafc'],
+  },
   // 2. Entertainment
   {
     id: 'wp-ent-1',
@@ -159,6 +196,20 @@ const WALLPAPERS: Wallpaper[] = [
     downloadUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=85&w=3840&auto=format&fit=crop',
     tags: ['nature', 'mountains', 'fog', 'forest', 'landscape'],
     palette: ['#1e293b', '#64748b', '#cbd5e1', '#064e3b'],
+  },
+  {
+    id: 'wp-nat-2',
+    title: 'Emerald Forest Canopy Rays',
+    category: 'Nature',
+    device: 'mobile',
+    resolution: '1440 x 3200',
+    aspect: '9:16',
+    views: 31500,
+    author: 'Sebastian Unrau',
+    url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=1200&auto=format&fit=crop',
+    downloadUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?q=85&w=1440&auto=format&fit=crop',
+    tags: ['nature', 'forest', 'trees', 'sunlight', 'green'],
+    palette: ['#064e3b', '#047857', '#a7f3d0', '#022c22'],
   },
   // 5. Cyberpunk
   {
@@ -235,38 +286,18 @@ const WALLPAPERS: Wallpaper[] = [
     tags: ['architecture', 'spiral', 'building', 'white', 'geometric'],
     palette: ['#0f172a', '#cbd5e1', '#f8fafc', '#334155'],
   },
-  // 10. Dark & OLED
-  {
-    id: 'wp-oled-1',
-    title: 'Pure Black Lunar Eclipse AMOLED',
-    category: 'Dark / OLED',
-    device: 'mobile',
-    resolution: '1440 x 3200',
-    aspect: '9:16',
-    views: 45200,
-    author: 'Alexander Andrews',
-    url: 'https://images.unsplash.com/photo-1532693322450-2cb5c511067d?q=80&w=1200&auto=format&fit=crop',
-    downloadUrl: 'https://images.unsplash.com/photo-1532693322450-2cb5c511067d?q=85&w=1440&auto=format&fit=crop',
-    tags: ['oled', 'dark', 'black', 'moon', 'amoled', 'space'],
-    palette: ['#000000', '#1c1917', '#e2e8f0', '#94a3b8'],
-  },
-];
-
-const CATEGORIES = [
-  'All',
-  'Minimal',
-  'Nature',
-  'Cyberpunk',
-  'Space',
-  'Abstract',
-  'Vehicles',
-  'Entertainment',
-  'Anime',
-  'Architecture',
-  'Dark / OLED',
 ];
 
 export const WallpapersPage: React.FC = () => {
+  // Admin custom uploads stored locally
+  const [adminWallpapers, setAdminWallpapers] = useState<Wallpaper[]>(() => {
+    try {
+      const saved = localStorage.getItem('buildsmith_admin_wallpapers_v1');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedDevice, setSelectedDevice] = useState<DeviceFilter>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -282,6 +313,95 @@ export const WallpapersPage: React.FC = () => {
   const [activeModalWallpaper, setActiveModalWallpaper] = useState<Wallpaper | null>(null);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
+  // Edit Wallpaper State
+  const [isEditingModal, setIsEditingModal] = useState<boolean>(false);
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editCategory, setEditCategory] = useState<string>('Dark / OLED');
+  const [editTags, setEditTags] = useState<string>('');
+  const [editDevice, setEditDevice] = useState<'desktop' | 'mobile' | 'ultrawide'>('desktop');
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+
+  // Sync edit form fields when activeModalWallpaper changes
+  useEffect(() => {
+    if (activeModalWallpaper) {
+      setEditTitle(activeModalWallpaper.title);
+      setEditCategory(activeModalWallpaper.category);
+      setEditTags(activeModalWallpaper.tags ? activeModalWallpaper.tags.join(', ') : '');
+      setEditDevice(activeModalWallpaper.device);
+      setIsEditingModal(false);
+      setSaveSuccess(false);
+    }
+  }, [activeModalWallpaper]);
+
+  // Secret Admin Importer State
+  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+  const [adminCategory, setAdminCategory] = useState<string>('Dark / OLED');
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgressText, setUploadProgressText] = useState<string>('');
+  const [dragActive, setDragActive] = useState<boolean>(false);
+  const [tripleClickCounter, setTripleClickCounter] = useState<number>(0);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sync custom wallpapers with Firestore shared_wallpapers collection for real-time global availability
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'shared_wallpapers'),
+      (snapshot) => {
+        const firestoreWps: Wallpaper[] = [];
+        snapshot.forEach((docSnap) => {
+          firestoreWps.push(docSnap.data() as Wallpaper);
+        });
+        if (firestoreWps.length > 0) {
+          setAdminWallpapers(firestoreWps);
+        }
+      },
+      (err) => {
+        console.warn('Firestore shared_wallpapers subscription error:', err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sync admin wallpapers to local storage as fallback
+  useEffect(() => {
+    try {
+      localStorage.setItem('buildsmith_admin_wallpapers_v1', JSON.stringify(adminWallpapers));
+    } catch (e) {
+      console.warn('Storage quota notice when saving admin wallpapers:', e);
+    }
+  }, [adminWallpapers]);
+
+  // Listen for secret keyboard shortcut: Ctrl + Shift + U
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        setIsAdminOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Triple-click on hero badge trigger
+  const handleBadgeClick = () => {
+    setTripleClickCounter((prev) => {
+      const next = prev + 1;
+      if (next >= 3) {
+        setIsAdminOpen(true);
+        return 0;
+      }
+      return next;
+    });
+    setTimeout(() => setTripleClickCounter(0), 1000);
+  };
+
+  // Combine static wallpapers with admin uploaded wallpapers
+  const allWallpapers = useMemo(() => {
+    return [...adminWallpapers, ...WALLPAPERS];
+  }, [adminWallpapers]);
 
   const toggleFavorite = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -292,8 +412,149 @@ export const WallpapersPage: React.FC = () => {
     });
   };
 
+  const handleDeleteAdminWallpaper = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setAdminWallpapers((prev) => prev.filter((wp) => wp.id !== id));
+    if (activeModalWallpaper?.id === id) {
+      setActiveModalWallpaper(null);
+    }
+    try {
+      await deleteDoc(doc(db, 'shared_wallpapers', id));
+    } catch (err) {
+      console.error('Failed to delete wallpaper from Firestore:', err);
+    }
+  };
+
+  const handleUpdateWallpaper = async (updatedWp: Wallpaper) => {
+    // Update local state
+    setAdminWallpapers((prev) => {
+      const exists = prev.some((wp) => wp.id === updatedWp.id);
+      if (exists) {
+        return prev.map((wp) => (wp.id === updatedWp.id ? updatedWp : wp));
+      }
+      return [updatedWp, ...prev];
+    });
+
+    if (activeModalWallpaper?.id === updatedWp.id) {
+      setActiveModalWallpaper(updatedWp);
+    }
+
+    // Persist to Firestore
+    try {
+      await setDoc(doc(db, 'shared_wallpapers', updatedWp.id), updatedWp);
+    } catch (err) {
+      console.error('Failed to update wallpaper in Firestore:', err);
+    }
+  };
+
+  const handleSaveModalEdits = async () => {
+    if (!activeModalWallpaper) return;
+
+    const parsedTags = editTags
+      .split(',')
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+
+    const updatedWp: Wallpaper = {
+      ...activeModalWallpaper,
+      title: editTitle.trim() || activeModalWallpaper.title,
+      category: editCategory,
+      tags: parsedTags.length > 0 ? parsedTags : activeModalWallpaper.tags,
+      device: editDevice,
+    };
+
+    await handleUpdateWallpaper(updatedWp);
+    setIsEditingModal(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  const handleProcessUploadedFiles = async (files: FileList | File[]) => {
+    const fileList = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (fileList.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgressText(`Processing ${fileList.length} image(s)...`);
+
+    const newWallpapers: Wallpaper[] = [];
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      setUploadProgressText(`Processing ${i + 1} of ${fileList.length}: ${file.name}`);
+
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // Determine image dimensions
+        const dimensions = await new Promise<{ width: number; height: number }>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.width, height: img.height });
+          img.onerror = () => resolve({ width: 1920, height: 1080 });
+          img.src = dataUrl;
+        });
+
+        const aspectNum = dimensions.width / dimensions.height;
+        let device: 'desktop' | 'mobile' | 'ultrawide' = 'desktop';
+        let aspect = '16:9';
+
+        if (aspectNum < 0.8) {
+          device = 'mobile';
+          aspect = '9:16';
+        } else if (aspectNum > 2.0) {
+          device = 'ultrawide';
+          aspect = '21:9';
+        }
+
+        const cleanTitle = file.name
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[-_]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const wp: Wallpaper = {
+          id: `wp-admin-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          title: cleanTitle || `Wallpaper ${i + 1}`,
+          category: adminCategory,
+          device,
+          resolution: `${dimensions.width} x ${dimensions.height}`,
+          aspect,
+          views: 1,
+          author: 'BuildSmith Collection',
+          url: dataUrl,
+          downloadUrl: dataUrl,
+          tags: ['curated', adminCategory.toLowerCase()],
+          palette: ['#0f172a', '#06b6d4', '#10b981'],
+        };
+
+        newWallpapers.push(wp);
+
+        // Save to Firestore
+        try {
+          await setDoc(doc(db, 'shared_wallpapers', wp.id), wp);
+        } catch (err) {
+          console.error('Failed to upload wallpaper to Firestore:', err);
+        }
+      } catch (err) {
+        console.error('Error loading image file:', file.name, err);
+      }
+    }
+
+    if (newWallpapers.length > 0) {
+      setAdminWallpapers((prev) => [...newWallpapers, ...prev]);
+    }
+
+    setIsUploading(false);
+    setUploadProgressText('');
+    setIsAdminOpen(false);
+  };
+
   const filteredWallpapers = useMemo(() => {
-    let list = [...WALLPAPERS];
+    let list = [...allWallpapers];
 
     if (filterFavoritesOnly) {
       list = list.filter((wp) => favorites.includes(wp.id));
@@ -324,7 +585,7 @@ export const WallpapersPage: React.FC = () => {
     }
 
     return list;
-  }, [selectedCategory, selectedDevice, searchQuery, sortBy, favorites, filterFavoritesOnly]);
+  }, [allWallpapers, selectedCategory, selectedDevice, searchQuery, sortBy, favorites, filterFavoritesOnly]);
 
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -344,15 +605,20 @@ export const WallpapersPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Hero Section */}
-      <section className="text-center py-4 sm:py-8 max-w-3xl mx-auto">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 mb-3">
-          <Sparkles className="w-3.5 h-3.5" /> Curated Gallery
+      <section className="text-center py-4 sm:py-8 max-w-3xl mx-auto space-y-3">
+        <span
+          onClick={handleBadgeClick}
+          className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 cursor-pointer select-none"
+          title="Curated 4K Gallery"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Curated 4K Gallery
         </span>
+
         <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
           Wallpapers
         </h1>
-        <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-          Dynamic live wallpaper previews, scheduling concepts, and background assets across 10 curated categories.
+        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
+          High-resolution 4K Ultra HD desktop, mobile, and ultrawide background assets across 10 curated categories.
         </p>
       </section>
 
@@ -454,223 +720,389 @@ export const WallpapersPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Grid Results Counter */}
+      {/* Wallpaper Cards Grid */}
       <section>
-        <div className="flex items-center justify-between mb-4 text-xs sm:text-sm text-slate-500">
-          <span>
-            Showing {filteredWallpapers.length} wallpaper{filteredWallpapers.length === 1 ? '' : 's'}
-          </span>
-          {(selectedCategory !== 'All' || selectedDevice !== 'all' || searchQuery || filterFavoritesOnly) && (
+        {filteredWallpapers.length === 0 ? (
+          <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 p-8 space-y-4 max-w-md mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mx-auto">
+              <ImageIcon className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">No wallpapers found</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Try adjusting your search query or device orientation filters.
+              </p>
+            </div>
             <button
               onClick={resetFilters}
-              className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer font-medium"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition"
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset filters
+              Reset Filters
             </button>
-          )}
-        </div>
-
-        {/* Wallpaper Grid */}
-        {filteredWallpapers.length > 0 ? (
+          </div>
+        ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredWallpapers.map((wp) => {
               const isFav = favorites.includes(wp.id);
+              const isAdminItem = wp.id.startsWith('wp-admin-');
+
               return (
                 <div
                   key={wp.id}
                   onClick={() => setActiveModalWallpaper(wp)}
-                  className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 card-hover-lift cursor-pointer flex flex-col shadow-lg"
+                  className="group relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:border-indigo-500/50 transition-all cursor-pointer flex flex-col justify-between"
                 >
-                  <div className="relative aspect-video w-full overflow-hidden bg-slate-950">
+                  {/* Aspect Ratio Container */}
+                  <div
+                    className={`relative w-full overflow-hidden bg-slate-950 ${
+                      wp.device === 'mobile' ? 'aspect-[9/16]' : wp.device === 'ultrawide' ? 'aspect-[21/9]' : 'aspect-[16/9]'
+                    }`}
+                  >
                     <img
                       src={wp.url}
                       alt={wp.title}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-950/70 text-slate-200 backdrop-blur-md">
-                        {wp.aspect}
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
+
+                    {/* Category Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-700/80 shadow-md">
+                        {wp.category}
                       </span>
-                      <button
-                        onClick={(e) => toggleFavorite(wp.id, e)}
-                        className={`p-1.5 rounded-full backdrop-blur-md transition ${
-                          isFav
-                            ? 'bg-rose-500/80 text-white'
-                            : 'bg-slate-950/60 text-slate-300 hover:text-white hover:bg-slate-950/90'
-                        }`}
-                      >
-                        <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
-                      </button>
                     </div>
 
-                    <div className="absolute bottom-2 left-2 flex gap-1">
-                      {wp.palette.slice(0, 3).map((col, idx) => (
-                        <span
-                          key={idx}
-                          className="w-3 h-3 rounded-full border border-black/40 shadow-xs"
-                          style={{ backgroundColor: col }}
-                        />
-                      ))}
-                    </div>
+                    {/* Favorite Button */}
+                    <button
+                      onClick={(e) => toggleFavorite(wp.id, e)}
+                      className="absolute top-3 right-3 p-2 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 hover:text-rose-400 transition cursor-pointer shadow-md"
+                      title={isFav ? 'Remove Favorite' : 'Add Favorite'}
+                    >
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+                    </button>
+
+                    {/* Delete Admin Uploaded Image Button (Visible in active session or when modal open) */}
+                    {isAdminItem && isAdminOpen && (
+                      <button
+                        onClick={(e) => handleDeleteAdminWallpaper(wp.id, e)}
+                        className="absolute bottom-3 right-3 p-2 rounded-full bg-rose-950/80 backdrop-blur-md border border-rose-800 text-rose-300 hover:bg-rose-900 transition cursor-pointer shadow-md opacity-80 group-hover:opacity-100"
+                        title="Remove admin image"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
-                        <span className="font-semibold text-indigo-500">{wp.category}</span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" /> {(wp.views / 1000).toFixed(1)}k
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-400 transition-colors">
+                  {/* Card Content Info */}
+                  <div className="p-4 space-y-2 bg-slate-900">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-bold text-white truncate leading-tight group-hover:text-indigo-300 transition-colors">
                         {wp.title}
                       </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">{wp.author}</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-1 pt-2">
-                      {wp.tags.slice(0, 3).map((t) => (
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                      <span>{wp.resolution}</span>
+                      <span className="capitalize">{wp.device}</span>
+                    </div>
+
+                    {/* Color Palette Indicators */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      {wp.palette.map((color, idx) => (
                         <span
-                          key={t}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono"
-                        >
-                          #{t}
-                        </span>
+                          key={idx}
+                          className="w-3 h-3 rounded-full border border-slate-700 shadow-sm"
+                          style={{ backgroundColor: color }}
+                          title={color}
+                        />
                       ))}
+                      <span className="text-[10px] text-slate-500 ml-auto flex items-center gap-1 font-mono">
+                        <Eye className="w-3 h-3" /> {wp.views.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400">
-              <Sparkles className="w-8 h-8" />
-            </div>
-            <h3 className="text-base font-semibold text-white">No wallpapers found</h3>
-            <p className="text-xs text-slate-400 max-w-xs">
-              Try selecting another category or resetting your search query.
-            </p>
-            <button
-              onClick={resetFilters}
-              className="px-4 py-2 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow"
-            >
-              Show All Wallpapers
-            </button>
-          </div>
         )}
       </section>
 
-      {/* Modal Dialog */}
-      {activeModalWallpaper && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base sm:text-lg truncate text-slate-900 dark:text-white">
-                  {activeModalWallpaper.title}
-                </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {activeModalWallpaper.aspect}
-                </span>
+      {/* HIDDEN SECRET ADMIN BATCH UPLOADER MODAL (Ctrl + Shift + U) */}
+      {isAdminOpen && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsAdminOpen(false)}
+              className="absolute top-5 right-5 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-semibold">
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Admin Wallpaper Importer</span>
               </div>
-              <button
-                onClick={() => setActiveModalWallpaper(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              <h2 className="text-2xl font-black text-white tracking-tight">Add Images to Wallpaper Gallery</h2>
+              <p className="text-xs text-slate-400">
+                Batch select or drop image files (`.jpg`, `.png`, `.webp`, `.avif`). Resolution, device orientation, and aspect ratios are auto-calculated and added directly to the gallery.
+              </p>
+            </div>
+
+            {/* Category Assign Selector */}
+            <div className="space-y-2 text-xs">
+              <label className="block text-slate-300 font-bold">Target Gallery Category:</label>
+              <select
+                value={adminCategory}
+                onChange={(e) => setAdminCategory(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 text-slate-200 font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
-                <X className="w-5 h-5" />
-              </button>
+                <option value="Dark / OLED">Dark / OLED</option>
+                <option value="Vehicles">Vehicles</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Minimal">Minimal</option>
+                <option value="Nature">Nature</option>
+                <option value="Cyberpunk">Cyberpunk</option>
+                <option value="Space">Space</option>
+                <option value="Abstract">Abstract</option>
+                <option value="Anime">Anime</option>
+                <option value="Architecture">Architecture</option>
+              </select>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center">
-              <div className="w-full relative rounded-xl overflow-hidden shadow-inner bg-slate-950 flex items-center justify-center max-h-[55vh]">
-                <img
-                  src={activeModalWallpaper.url}
-                  alt={activeModalWallpaper.title}
-                  className="w-full h-auto max-h-[55vh] object-contain"
-                />
-                <div className="absolute bottom-3 right-3 bg-slate-900/70 backdrop-blur-sm px-3 py-1 rounded-md text-[11px] text-white flex items-center gap-1.5">
-                  <Monitor className="w-3.5 h-3.5" />
-                  <span>{activeModalWallpaper.resolution}</span>
-                </div>
-              </div>
+            {/* Upload Dropzone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragActive(false);
+                if (e.dataTransfer.files) {
+                  handleProcessUploadedFiles(e.dataTransfer.files);
+                }
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+                dragActive
+                  ? 'border-emerald-400 bg-emerald-500/10'
+                  : 'border-slate-700/80 hover:border-emerald-400 bg-slate-950/60'
+              }`}
+            >
+              <UploadCloud className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
+              <p className="text-sm font-extrabold text-white">Click or Drop Images Here</p>
+              <p className="text-xs text-slate-400 mt-1">Select multiple images at once to populate the gallery</p>
 
-              <div className="w-full mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs text-slate-500">Category & Author</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                    {activeModalWallpaper.category} &bull; {activeModalWallpaper.author}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">Color Palette:</span>
-                  <div className="flex items-center gap-1.5">
-                    {activeModalWallpaper.palette.map((col, idx) => (
-                      <span
-                        key={idx}
-                        title={col}
-                        className="w-5 h-5 rounded-full border border-slate-700 shadow-sm cursor-pointer hover:scale-110 transition-transform"
-                        style={{ backgroundColor: col }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 max-w-xs justify-end">
-                  {activeModalWallpaper.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 font-mono"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  if (e.target.files) handleProcessUploadedFiles(e.target.files);
+                }}
+                multiple
+                accept="image/*"
+                className="hidden"
+              />
             </div>
 
-            <div className="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
-              <button
-                onClick={() => toggleFavorite(activeModalWallpaper.id)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition"
-              >
-                <Heart
-                  className={`w-4 h-4 ${
-                    favorites.includes(activeModalWallpaper.id) ? 'fill-rose-500 text-rose-500' : 'text-slate-400'
-                  }`}
-                />
-                <span>
-                  {favorites.includes(activeModalWallpaper.id) ? 'Favorited' : 'Add to Favorites'}
-                </span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleCopyUrl(activeModalWallpaper.downloadUrl)}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition cursor-pointer"
-                >
-                  {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-                </button>
-                <a
-                  href={activeModalWallpaper.downloadUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  download={`${activeModalWallpaper.id}.jpg`}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow transition cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download High-Res</span>
-                </a>
+            {isUploading && (
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-300 flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>{uploadProgressText}</span>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* FULLSCREEN LIGHTBOX PREVIEW MODAL */}
+      {activeModalWallpaper && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4 overflow-y-auto">
+          <div className="max-w-5xl w-full bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-0 relative">
+            <button
+              onClick={() => setActiveModalWallpaper(null)}
+              className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 hover:text-white transition cursor-pointer shadow-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Image View */}
+            <div className="w-full bg-slate-950 max-h-[70vh] flex items-center justify-center p-4 overflow-hidden relative">
+              <img
+                src={activeModalWallpaper.url}
+                alt={activeModalWallpaper.title}
+                className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
+              />
+            </div>
+
+            {/* Modal Details & Action Bar */}
+            <div className="p-6 sm:p-8 bg-slate-900 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      {activeModalWallpaper.category}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400 capitalize bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
+                      {activeModalWallpaper.device}
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                    {activeModalWallpaper.title}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Resolution: <strong className="text-slate-200 font-mono">{activeModalWallpaper.resolution}</strong> &bull; Views: <strong className="text-slate-200 font-mono">{activeModalWallpaper.views.toLocaleString()}</strong>
+                  </p>
+
+                  {/* Tag Pills */}
+                  {activeModalWallpaper.tags && activeModalWallpaper.tags.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                      <Tag className="w-3.5 h-3.5 text-slate-500" />
+                      {activeModalWallpaper.tags.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            setSearchQuery(tag);
+                            setActiveModalWallpaper(null);
+                          }}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-800/90 hover:bg-indigo-950 hover:text-indigo-300 text-slate-300 border border-slate-700/80 cursor-pointer transition"
+                          title={`Search gallery for #${tag}`}
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setIsEditingModal(!isEditingModal)}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold text-xs border border-amber-500/30 flex items-center gap-2 transition cursor-pointer"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span>{isEditingModal ? 'Close Editor' : 'Edit Tags & Category'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCopyUrl(activeModalWallpaper.url)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-2 transition cursor-pointer"
+                  >
+                    {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{copiedLink ? 'Copied Link!' : 'Copy Link'}</span>
+                  </button>
+
+                  <a
+                    href={activeModalWallpaper.downloadUrl || activeModalWallpaper.url}
+                    download={`${activeModalWallpaper.title.replace(/\s+/g, '_')}.jpg`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download HD</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Success Alert */}
+              {saveSuccess && (
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Wallpaper tags and category updated successfully and synced for all visitors!</span>
+                </div>
+              )}
+
+              {/* INLINE EDIT FORM PANEL */}
+              {isEditingModal && (
+                <div className="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-5 space-y-4 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="text-xs font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Edit Wallpaper Metadata
+                    </span>
+                    <span className="text-[10px] text-slate-400">Updates sync in real-time across all visitors</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    {/* Title */}
+                    <div className="space-y-1">
+                      <label className="block text-slate-300 font-bold">Image Title:</label>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                      />
+                    </div>
+
+                    {/* Category */}
+                    <div className="space-y-1">
+                      <label className="block text-slate-300 font-bold">Category:</label>
+                      <select
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                      >
+                        {CATEGORIES.filter((c) => c !== 'All').map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="block text-slate-300 font-bold">Tags (Comma Separated):</label>
+                      <input
+                        type="text"
+                        value={editTags}
+                        onChange={(e) => setEditTags(e.target.value)}
+                        placeholder="e.g. oled, dark, minimal, 4k, supercars"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium font-mono text-xs"
+                      />
+                    </div>
+
+                    {/* Device Orientation */}
+                    <div className="space-y-1">
+                      <label className="block text-slate-300 font-bold">Device Aspect:</label>
+                      <select
+                        value={editDevice}
+                        onChange={(e) => setEditDevice(e.target.value as any)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                      >
+                        <option value="desktop">Desktop (16:9)</option>
+                        <option value="mobile">Mobile (9:16)</option>
+                        <option value="ultrawide">Ultrawide (21:9)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                    <button
+                      onClick={() => setIsEditingModal(false)}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveModalEdits}
+                      className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Changes</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
