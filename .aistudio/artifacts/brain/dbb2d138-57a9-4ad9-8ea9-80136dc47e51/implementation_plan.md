@@ -1,33 +1,30 @@
-# Implementation Plan - Pulse Backup Restore Fix & Merging Engine
+# Implementation Plan - Multiline 66-Character Sheet Number Wrapping
 
-Fix the restore functionality in the **Pulse** time tracker application to support legacy/alternative backup formats and merge restored data into the current workspace.
-
-## Problem Analysis
-The uploaded backup file (`tracker_full_backup_2026-11-02__1__e7401da5.json`) uses a legacy/alternative schema:
-- Tasks use `title` instead of `name`.
-- Intervals use `durationSeconds` and ISO timestamp strings (`start`, `end`, `lastStartISO`, `lastEndISO`) instead of millisecond timestamps (`start: number`, `end: number`, `duration: number`).
-- Tasks track total time in `accumulatedSeconds`.
-
-When Pulse tries to load this format without normalization:
-1. Task titles appear empty (`t.name` is undefined).
-2. Interval calculations yield `NaN` because `i.duration` is missing.
+Format extracted sheet number strings so that each line contains a maximum of 66 characters, cleanly breaking at comma `,` boundaries when wrapping to subsequent lines.
 
 ## Proposed Changes
 
-### 1. Robust Schema Normalizer (`/src/pages/apps/PulseApp.tsx`)
-Create a backward-compatible parser `normalizePulseBackupData` that:
-- Maps legacy `title` to `name`.
-- Converts ISO timestamp strings in intervals to millisecond numbers (`Date.parse()`).
-- Normalizes interval durations (`durationSeconds` or `duration`) and handles `accumulatedSeconds` gracefully.
-- Ensures all projects have valid `id`, `name`, and `createdAt` timestamps.
+### 1. Extracted Sheet Text Formatting Utility (`/src/pages/apps/TransmittalBuilderApp.tsx`)
+- Implement a helper function `formatSheetsMultiline(files: File[], maxLineLength = 66): string`:
+  - Extracts sheet names without extensions from uploaded files.
+  - Accumulates file names into lines, ensuring no line exceeds 66 characters.
+  - Breaks strictly at comma boundaries (`, `).
+  - Joins line chunks with `\n`.
 
-### 2. Workspace Merge Handler (`/src/pages/apps/PulseApp.tsx`)
-- Combine incoming projects with existing projects (preventing duplicate IDs).
-- Combine incoming tasks with existing tasks (preventing duplicate IDs).
-- Set `activeProjectId` to the restored backup's active project if valid.
-- Notify the user with a confirmation message (e.g., `"Successfully merged 4 projects and 3 tasks from backup!"`).
+### 2. Live Preview & Formatted Output Sync
+- Update `{ASSEMBLY_SHEETS}` and `{E_SHEETS}` values across the live transmittal preview, plain text summary, and CSV export.
+- Display multiline text smoothly inside preview table cells using whitespace preservation (`whitespace-pre-line`).
+
+### 3. Word Document (`.docx`) In-Place Substitution
+- Configure `Docxtemplater` with `linebreaks: true` to convert `\n` in multiline sheet strings to Word linebreaks (`<w:br/>`).
+- In surgical XML DOM insertion (`word/document.xml`), create separate `<w:p>` or `<w:r><w:t>... </w:t><w:br/></w:r>` elements for each line chunk so Word renders each 66-character line cleanly inside table cells.
 
 ## Verification Plan
-1. Test restoring the user's uploaded backup JSON file (`tracker_full_backup_2026-11-02__1__e7401da5.json`).
-2. Verify all project names (`General Work`, `1_`, `2`, `3`) and task names (`11`, `21`, `33`) display correctly with accurate accumulated durations.
-3. Run `compile_applet` and `lint_applet` to confirm zero errors or type mismatches.
+
+### Manual Verification
+1. Upload multiple drawing files with long sheet names.
+2. Verify in live preview that lines break at commas before exceeding 66 characters.
+3. Download updated `.docx` transmittal and inspect table cell layout.
+
+### Automated Verification
+- Run `compile_applet` and `lint_applet` to ensure zero compilation or syntax errors.

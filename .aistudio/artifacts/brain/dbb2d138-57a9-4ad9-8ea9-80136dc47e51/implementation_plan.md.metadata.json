@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to fix Pulse backup restore by adding backward-compatible schema normalization and seamless merging into the current workspace.",
-  "updatedAt": "2026-11-02T17:20:42.566767397Z",
+  "summary": "Implementation plan to format extracted sheet numbers into multiline text with a maximum line length of 66 characters, breaking neatly at commas.",
+  "updatedAt": "2026-11-03T17:49:10.197622456Z",
   "requestFeedback": true,
   "userFacing": true
 }
