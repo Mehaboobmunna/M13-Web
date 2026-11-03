@@ -165,6 +165,10 @@ export const TransmittalBuilderApp: React.FC = () => {
   const [copiedStatus, setCopiedStatus] = useState<boolean>(false);
   const [isUpdatingDoc, setIsUpdatingDoc] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
+  const [transmittalsDownloaded, setTransmittalsDownloaded] = useState<number>(() => {
+    const saved = localStorage.getItem('transmittals_downloaded_count');
+    return saved ? parseInt(saved, 10) || 0 : 0;
+  });
 
   // Reset all uploaded files and state
   const handleResetAll = () => {
@@ -689,11 +693,11 @@ export const TransmittalBuilderApp: React.FC = () => {
         const rPr = existingRPr ? existingRPr : createWElem('rPr');
 
         const isEmailCell = trimmedText.toLowerCase() === 'email';
-        const isBold = opts.isBold ?? (isEmailCell || false);
-        const isBlue = opts.isBlue ?? (isEmailCell || false);
-        const isUnderline = opts.isUnderline ?? (isEmailCell || false);
+        const isBold = opts.isBold ?? false;
+        const isBlue = opts.isBlue ?? true;
+        const isUnderline = opts.isUnderline ?? false;
 
-        // Apply Bold
+        // Apply or strip Bold
         if (isBold) {
           if (!rPr.getElementsByTagName('w:b')[0]) {
             rPr.appendChild(createWElem('b'));
@@ -701,9 +705,12 @@ export const TransmittalBuilderApp: React.FC = () => {
           if (!rPr.getElementsByTagName('w:bCs')[0]) {
             rPr.appendChild(createWElem('bCs'));
           }
+        } else {
+          Array.from(rPr.getElementsByTagName('w:b')).forEach((b) => b.parentNode?.removeChild(b));
+          Array.from(rPr.getElementsByTagName('w:bCs')).forEach((b) => b.parentNode?.removeChild(b));
         }
 
-        // Apply Blue Color (1E3A8A)
+        // Apply or strip Blue Color (1E3A8A)
         if (isBlue) {
           let color = rPr.getElementsByTagName('w:color')[0];
           if (!color) {
@@ -720,7 +727,7 @@ export const TransmittalBuilderApp: React.FC = () => {
           color.setAttribute('w:val', '000000');
         }
 
-        // Apply Underline (single)
+        // Apply or strip Underline
         if (isUnderline) {
           let u = rPr.getElementsByTagName('w:u')[0];
           if (!u) {
@@ -728,6 +735,8 @@ export const TransmittalBuilderApp: React.FC = () => {
             rPr.appendChild(u);
           }
           u.setAttribute('w:val', 'single');
+        } else {
+          Array.from(rPr.getElementsByTagName('w:u')).forEach((u) => u.parentNode?.removeChild(u));
         }
 
         newR.appendChild(rPr);
@@ -796,17 +805,17 @@ export const TransmittalBuilderApp: React.FC = () => {
             const cells = Array.from(row.getElementsByTagName('w:tc'));
             if (cells.length >= 3) {
               if (drawingRowIndex === 0) {
-                updateCellText(cells[0], 'email', 'center', { isBold: true, isBlue: true, isUnderline: true });
-                updateCellText(cells[1], assemblySheetsText, 'top', { isBold: false, isBlue: false, isUnderline: false });
-                updateCellText(cells[2], assemblyCountFormatted, 'center', { isBold: true, isBlue: true, isUnderline: true });
+                updateCellText(cells[0], 'email', 'center', { isBold: false, isBlue: true, isUnderline: false });
+                updateCellText(cells[1], assemblySheetsText, 'top', { isBold: false, isBlue: true, isUnderline: false });
+                updateCellText(cells[2], assemblyCountFormatted, 'center', { isBold: false, isBlue: true, isUnderline: false });
               } else if (drawingRowIndex === 1) {
-                updateCellText(cells[0], 'email', 'center', { isBold: true, isBlue: true, isUnderline: true });
-                updateCellText(cells[1], esheetSheetsText, 'top', { isBold: false, isBlue: false, isUnderline: false });
-                updateCellText(cells[2], esheetCountFormatted, 'center', { isBold: true, isBlue: true, isUnderline: true });
+                updateCellText(cells[0], 'email', 'center', { isBold: false, isBlue: true, isUnderline: false });
+                updateCellText(cells[1], esheetSheetsText, 'top', { isBold: false, isBlue: true, isUnderline: false });
+                updateCellText(cells[2], esheetCountFormatted, 'center', { isBold: false, isBlue: true, isUnderline: false });
               } else if (drawingRowIndex === 2) {
-                updateCellText(cells[0], 'email', 'center', { isBold: true, isBlue: true, isUnderline: true });
-                updateCellText(cells[1], 'Single part drawings', 'top', { isBold: false, isBlue: false, isUnderline: true });
-                updateCellText(cells[2], partCountFormatted, 'center', { isBold: true, isBlue: true, isUnderline: true });
+                updateCellText(cells[0], 'email', 'center', { isBold: false, isBlue: true, isUnderline: false });
+                updateCellText(cells[1], 'Single part drawings', 'top', { isBold: false, isBlue: true, isUnderline: false });
+                updateCellText(cells[2], partCountFormatted, 'center', { isBold: false, isBlue: true, isUnderline: false });
               }
               drawingRowIndex++;
             }
@@ -870,6 +879,11 @@ export const TransmittalBuilderApp: React.FC = () => {
 
       setIsUpdatingDoc(false);
       incrementMetric('transmittalBuilderRequests');
+      setTransmittalsDownloaded((prev) => {
+        const next = prev + 1;
+        localStorage.setItem('transmittals_downloaded_count', String(next));
+        return next;
+      });
     } catch (err) {
       console.error(err);
       setIsUpdatingDoc(false);
@@ -905,7 +919,7 @@ export const TransmittalBuilderApp: React.FC = () => {
             </button>
             <div className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-2 shadow-inner">
               <Zap className="w-4 h-4 text-amber-400" />
-              <span>Updated: <strong className="text-cyan-300 font-mono text-sm">{metrics.transmittalBuilderRequests}</strong> Documents</span>
+              <span>Updated : <strong className="text-cyan-300 font-mono text-sm">{transmittalsDownloaded}</strong> Documents</span>
             </div>
           </div>
         </div>
@@ -1251,23 +1265,23 @@ export const TransmittalBuilderApp: React.FC = () => {
 
               {/* Row 1: Assembly Drawings */}
               <div className="grid grid-cols-12 divide-x divide-slate-900 border-b border-slate-900 p-2 font-mono text-[11px] items-center">
-                <div className="col-span-2 font-bold text-blue-900 underline">{deliveryMethod}</div>
-                <div className="col-span-6 font-bold text-slate-900 break-words whitespace-pre-line">{assemblySheetsVal}</div>
-                <div className="col-span-4 font-bold text-blue-900 underline whitespace-pre-line">{assemblyCountVal}</div>
+                <div className="col-span-2 font-normal text-blue-900">{deliveryMethod}</div>
+                <div className="col-span-6 font-normal text-blue-900 break-words whitespace-pre-line">{assemblySheetsVal}</div>
+                <div className="col-span-4 font-normal text-blue-900 whitespace-pre-line">{assemblyCountVal}</div>
               </div>
 
               {/* Row 2: E-sheets Plan/Detail */}
               <div className="grid grid-cols-12 divide-x divide-slate-900 border-b border-slate-900 p-2 font-mono text-[11px] items-center">
-                <div className="col-span-2 font-bold text-blue-900 underline">{deliveryMethod}</div>
-                <div className="col-span-6 font-bold text-slate-900 break-words whitespace-pre-line">{esheetSheetsVal}</div>
-                <div className="col-span-4 font-bold text-blue-900 underline whitespace-pre-line">{esheetCountVal}</div>
+                <div className="col-span-2 font-normal text-blue-900">{deliveryMethod}</div>
+                <div className="col-span-6 font-normal text-blue-900 break-words whitespace-pre-line">{esheetSheetsVal}</div>
+                <div className="col-span-4 font-normal text-blue-900 whitespace-pre-line">{esheetCountVal}</div>
               </div>
 
               {/* Row 3: Part Drawings Count */}
               <div className="grid grid-cols-12 divide-x divide-slate-900 p-2 font-mono text-[11px] items-center">
-                <div className="col-span-2 font-bold text-blue-900 underline">{deliveryMethod}</div>
-                <div className="col-span-6 font-bold text-slate-900 underline">Single part drawings</div>
-                <div className="col-span-4 font-bold text-blue-900 underline whitespace-pre-line">{partCountVal}</div>
+                <div className="col-span-2 font-normal text-blue-900">{deliveryMethod}</div>
+                <div className="col-span-6 font-normal text-blue-900">Single part drawings</div>
+                <div className="col-span-4 font-normal text-blue-900 whitespace-pre-line">{partCountVal}</div>
               </div>
             </div>
 
