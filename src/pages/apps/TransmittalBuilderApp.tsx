@@ -365,7 +365,7 @@ export const TransmittalBuilderApp: React.FC = () => {
             // Transmittal No Header
             new Paragraph({
               children: [
-                new TextRun({ text: 'TRANSMITTAL NO: ', bold: true, color: '1E3A8A', size: 24 }),
+                new TextRun({ text: 'TRANSMITTAL NO: ', bold: true, color: '0000FF', size: 24 }),
                 new TextRun({ text: transmittalNo, bold: true, size: 24 }),
               ],
               spacing: { after: 120 },
@@ -382,7 +382,7 @@ export const TransmittalBuilderApp: React.FC = () => {
                       width: { size: 50, type: WidthType.PERCENTAGE },
                       children: [
                         new Paragraph({
-                          children: [new TextRun({ text: 'Customer :', bold: true, color: '1E3A8A', size: 18 })],
+                          children: [new TextRun({ text: 'Customer :', bold: true, color: '0000FF', size: 18 })],
                           spacing: { after: 40 },
                         }),
                         new Paragraph({
@@ -399,7 +399,7 @@ export const TransmittalBuilderApp: React.FC = () => {
                         }),
                         new Paragraph({
                           children: [
-                            new TextRun({ text: 'Attention: ', bold: true, color: '1E3A8A', size: 18 }),
+                            new TextRun({ text: 'Attention: ', bold: true, color: '0000FF', size: 18 }),
                             new TextRun({ text: attention, bold: true, color: '047857', size: 18 }),
                           ],
                           spacing: { before: 80 },
@@ -411,28 +411,28 @@ export const TransmittalBuilderApp: React.FC = () => {
                       children: [
                         new Paragraph({
                           children: [
-                            new TextRun({ text: 'Project: ', bold: true, color: '1E3A8A', size: 18 }),
+                            new TextRun({ text: 'Project: ', bold: true, color: '0000FF', size: 18 }),
                             new TextRun({ text: projectName, bold: true, color: '047857', size: 18 }),
                           ],
                           spacing: { after: 40 },
                         }),
                         new Paragraph({
                           children: [
-                            new TextRun({ text: 'Project Number: ', bold: true, color: '1E3A8A', size: 18 }),
+                            new TextRun({ text: 'Project Number: ', bold: true, color: '0000FF', size: 18 }),
                             new TextRun({ text: projectNumber, bold: true, color: '047857', size: 18 }),
                           ],
                           spacing: { after: 40 },
                         }),
                         new Paragraph({
                           children: [
-                            new TextRun({ text: 'Location: ', bold: true, color: '1E3A8A', size: 18 }),
+                            new TextRun({ text: 'Location: ', bold: true, color: '0000FF', size: 18 }),
                             new TextRun({ text: location, bold: true, color: '047857', size: 18 }),
                           ],
                           spacing: { after: 80 },
                         }),
                         new Paragraph({
                           children: [
-                            new TextRun({ text: 'Date: ', bold: true, color: '1E3A8A', size: 18 }),
+                            new TextRun({ text: 'Date: ', bold: true, color: '0000FF', size: 18 }),
                             new TextRun({ text: transmittalDate, bold: true, color: '047857', size: 18 }),
                           ],
                           spacing: { before: 80 },
@@ -456,15 +456,15 @@ export const TransmittalBuilderApp: React.FC = () => {
                   children: [
                     new TableCell({
                       width: { size: 18, type: WidthType.PERCENTAGE },
-                      children: [new Paragraph({ children: [new TextRun({ text: 'ftp/email', bold: true, underline: {}, color: '1E3A8A', size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: 'ftp/email', bold: true, color: '0000FF', size: 20 })] })],
                     }),
                     new TableCell({
                       width: { size: 52, type: WidthType.PERCENTAGE },
-                      children: [new Paragraph({ children: [new TextRun({ text: 'Sheet #', bold: true, underline: {}, color: '1E3A8A', size: 20 })], alignment: AlignmentType.CENTER })],
+                      children: [new Paragraph({ children: [new TextRun({ text: 'Sheet #', bold: true, color: '0000FF', size: 20 })], alignment: AlignmentType.CENTER })],
                     }),
                     new TableCell({
                       width: { size: 30, type: WidthType.PERCENTAGE },
-                      children: [new Paragraph({ children: [new TextRun({ text: 'Total Count', bold: true, underline: {}, color: '1E3A8A', size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: 'Total Count', bold: true, color: '0000FF', size: 20 })] })],
                     }),
                   ],
                 }),
@@ -473,15 +473,15 @@ export const TransmittalBuilderApp: React.FC = () => {
                   children: [
                     new TableCell({
                       verticalAlign: VerticalAlign.CENTER,
-                      children: [new Paragraph({ children: [new TextRun({ text: deliveryMethod, bold: true, color: '1E3A8A', size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: deliveryMethod, color: '0000FF', size: 20 })] })],
                     }),
                     new TableCell({
                       verticalAlign: VerticalAlign.TOP,
-                      children: [new Paragraph({ children: createLinesRuns(assemblySheetsText, false, '000000') })],
+                      children: [new Paragraph({ children: createLinesRuns(assemblySheetsText, false, '0000FF') })],
                     }),
                     new TableCell({
                       verticalAlign: VerticalAlign.CENTER,
-                      children: [new Paragraph({ children: createLinesRuns(assemblyCountFormatted, false, '1E3A8A') })],
+                      children: [new Paragraph({ children: createLinesRuns(assemblyCountFormatted, false, '0000FF') })],
                     }),
                   ],
                 }),
@@ -490,15 +490,15 @@ export const TransmittalBuilderApp: React.FC = () => {
                   children: [
                     new TableCell({
                       verticalAlign: VerticalAlign.CENTER,
-                      children: [new Paragraph({ children: [new TextRun({ text: deliveryMethod, bold: true, color: '1E3A8A', size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: deliveryMethod, color: '0000FF', size: 20 })] })],
                     }),
                     new TableCell({
                       verticalAlign: VerticalAlign.TOP,
-                      children: [new Paragraph({ children: createLinesRuns(esheetSheetsText, false, '000000') })],
+                      children: [new Paragraph({ children: createLinesRuns(esheetSheetsText, false, '0000FF') })],
                     }),
                     new TableCell({
                       verticalAlign: VerticalAlign.CENTER,
-                      children: [new Paragraph({ children: createLinesRuns(esheetCountFormatted, false, '1E3A8A') })],
+                      children: [new Paragraph({ children: createLinesRuns(esheetCountFormatted, false, '0000FF') })],
                     }),
                   ],
                 }),
@@ -507,15 +507,15 @@ export const TransmittalBuilderApp: React.FC = () => {
                   children: [
                     new TableCell({
                       verticalAlign: VerticalAlign.CENTER,
-                      children: [new Paragraph({ children: [new TextRun({ text: deliveryMethod, bold: true, color: '1E3A8A', size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: deliveryMethod, color: '0000FF', size: 20 })] })],
                     }),
                     new TableCell({
                       verticalAlign: VerticalAlign.TOP,
-                      children: [new Paragraph({ children: [new TextRun({ text: 'Single part drawings', size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: 'Single part drawings', color: '0000FF', size: 20 })] })],
                     }),
                     new TableCell({
                       verticalAlign: VerticalAlign.CENTER,
-                      children: [new Paragraph({ children: createLinesRuns(partCountFormatted, false, '1E3A8A') })],
+                      children: [new Paragraph({ children: createLinesRuns(partCountFormatted, false, '0000FF') })],
                     }),
                   ],
                 }),
@@ -547,7 +547,7 @@ export const TransmittalBuilderApp: React.FC = () => {
                         verticalAlign: VerticalAlign.CENTER,
                         children: [
                           new Paragraph({
-                            children: [new TextRun({ text: opt, bold: true, color: '1E3A8A', size: 20 })],
+                            children: [new TextRun({ text: opt, bold: true, color: '0000FF', size: 20 })],
                           }),
                         ],
                       }),
@@ -658,7 +658,7 @@ export const TransmittalBuilderApp: React.FC = () => {
           }
         }
 
-        // 3. Reset Paragraph Spacing (before=0, after=0)
+        // 3. Reset Paragraph Spacing (before=0, after=0) & strip paragraph level underlines
         let pPr = firstP.getElementsByTagName('w:pPr')[0];
         if (!pPr) {
           pPr = createWElem('pPr');
@@ -673,6 +673,30 @@ export const TransmittalBuilderApp: React.FC = () => {
         spacing.setAttribute('w:after', '0');
         spacing.setAttribute('w:beforeAutospacing', '0');
         spacing.setAttribute('w:afterAutospacing', '0');
+
+        // Clean paragraph level run properties (w:pPr -> w:rPr -> w:u)
+        let pPrRPr = pPr.getElementsByTagName('w:rPr')[0];
+        if (!pPrRPr) {
+          pPrRPr = createWElem('rPr');
+          pPr.appendChild(pPrRPr);
+        }
+        let pU = pPrRPr.getElementsByTagName('w:u')[0];
+        if (!pU) {
+          pU = createWElem('u');
+          pPrRPr.appendChild(pU);
+        }
+        pU.setAttribute('w:val', 'none');
+
+        // Unwrap and remove any <w:hyperlink> wrappers inside firstP that force underline
+        const hyperlinks = Array.from(firstP.getElementsByTagName('w:hyperlink'));
+        hyperlinks.forEach((h) => {
+          while (h.firstChild) {
+            firstP.insertBefore(h.firstChild, h);
+          }
+          if (h.parentNode) {
+            h.parentNode.removeChild(h);
+          }
+        });
 
         // Preserve existing run properties <w:rPr> from first run if available to retain original font family & font size
         const existingRuns = Array.from(firstP.getElementsByTagName('w:r'));
@@ -692,7 +716,6 @@ export const TransmittalBuilderApp: React.FC = () => {
         const newR = createWElem('r');
         const rPr = existingRPr ? existingRPr : createWElem('rPr');
 
-        const isEmailCell = trimmedText.toLowerCase() === 'email';
         const isBold = opts.isBold ?? false;
         const isBlue = opts.isBlue ?? true;
         const isUnderline = opts.isUnderline ?? false;
@@ -710,14 +733,14 @@ export const TransmittalBuilderApp: React.FC = () => {
           Array.from(rPr.getElementsByTagName('w:bCs')).forEach((b) => b.parentNode?.removeChild(b));
         }
 
-        // Apply or strip Blue Color (1E3A8A)
+        // Apply Cobalt Pure Blue Color (0000FF)
         if (isBlue) {
           let color = rPr.getElementsByTagName('w:color')[0];
           if (!color) {
             color = createWElem('color');
             rPr.appendChild(color);
           }
-          color.setAttribute('w:val', '1E3A8A');
+          color.setAttribute('w:val', '0000FF');
         } else if (!existingRPr) {
           let color = rPr.getElementsByTagName('w:color')[0];
           if (!color) {
@@ -727,16 +750,16 @@ export const TransmittalBuilderApp: React.FC = () => {
           color.setAttribute('w:val', '000000');
         }
 
-        // Apply or strip Underline
+        // Explicitly set w:u w:val="none" so Word never inherits underlines from paragraph/table styles
+        let u = rPr.getElementsByTagName('w:u')[0];
+        if (!u) {
+          u = createWElem('u');
+          rPr.appendChild(u);
+        }
         if (isUnderline) {
-          let u = rPr.getElementsByTagName('w:u')[0];
-          if (!u) {
-            u = createWElem('u');
-            rPr.appendChild(u);
-          }
           u.setAttribute('w:val', 'single');
         } else {
-          Array.from(rPr.getElementsByTagName('w:u')).forEach((u) => u.parentNode?.removeChild(u));
+          u.setAttribute('w:val', 'none');
         }
 
         newR.appendChild(rPr);
@@ -1257,7 +1280,7 @@ export const TransmittalBuilderApp: React.FC = () => {
 
             {/* Drawings Table */}
             <div className="border border-slate-900">
-              <div className="grid grid-cols-12 divide-x divide-slate-900 border-b border-slate-900 font-bold text-blue-900 underline bg-slate-50 p-2 text-[11px]">
+              <div className="grid grid-cols-12 divide-x divide-slate-900 border-b border-slate-900 font-bold text-[#0000FF] bg-slate-50 p-2 text-[11px]">
                 <div className="col-span-2">ftp/email</div>
                 <div className="col-span-6">Sheet #</div>
                 <div className="col-span-4">Total Count</div>
@@ -1265,23 +1288,23 @@ export const TransmittalBuilderApp: React.FC = () => {
 
               {/* Row 1: Assembly Drawings */}
               <div className="grid grid-cols-12 divide-x divide-slate-900 border-b border-slate-900 p-2 font-mono text-[11px] items-center">
-                <div className="col-span-2 font-normal text-blue-900">{deliveryMethod}</div>
-                <div className="col-span-6 font-normal text-blue-900 break-words whitespace-pre-line">{assemblySheetsVal}</div>
-                <div className="col-span-4 font-normal text-blue-900 whitespace-pre-line">{assemblyCountVal}</div>
+                <div className="col-span-2 font-normal text-[#0000FF]">{deliveryMethod}</div>
+                <div className="col-span-6 font-normal text-[#0000FF] break-words whitespace-pre-line">{assemblySheetsVal}</div>
+                <div className="col-span-4 font-normal text-[#0000FF] whitespace-pre-line">{assemblyCountVal}</div>
               </div>
 
               {/* Row 2: E-sheets Plan/Detail */}
               <div className="grid grid-cols-12 divide-x divide-slate-900 border-b border-slate-900 p-2 font-mono text-[11px] items-center">
-                <div className="col-span-2 font-normal text-blue-900">{deliveryMethod}</div>
-                <div className="col-span-6 font-normal text-blue-900 break-words whitespace-pre-line">{esheetSheetsVal}</div>
-                <div className="col-span-4 font-normal text-blue-900 whitespace-pre-line">{esheetCountVal}</div>
+                <div className="col-span-2 font-normal text-[#0000FF]">{deliveryMethod}</div>
+                <div className="col-span-6 font-normal text-[#0000FF] break-words whitespace-pre-line">{esheetSheetsVal}</div>
+                <div className="col-span-4 font-normal text-[#0000FF] whitespace-pre-line">{esheetCountVal}</div>
               </div>
 
               {/* Row 3: Part Drawings Count */}
               <div className="grid grid-cols-12 divide-x divide-slate-900 p-2 font-mono text-[11px] items-center">
-                <div className="col-span-2 font-normal text-blue-900">{deliveryMethod}</div>
-                <div className="col-span-6 font-normal text-blue-900">Single part drawings</div>
-                <div className="col-span-4 font-normal text-blue-900 whitespace-pre-line">{partCountVal}</div>
+                <div className="col-span-2 font-normal text-[#0000FF]">{deliveryMethod}</div>
+                <div className="col-span-6 font-normal text-[#0000FF]">Single part drawings</div>
+                <div className="col-span-4 font-normal text-[#0000FF] whitespace-pre-line">{partCountVal}</div>
               </div>
             </div>
 
