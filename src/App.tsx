@@ -14,6 +14,7 @@ import { DrawingSeriesBuilderApp } from './pages/apps/DrawingSeriesBuilderApp';
 import { ImperialCalculatorApp } from './pages/apps/ImperialCalculatorApp';
 import { KeypadImperialCalculatorApp } from './pages/apps/KeypadImperialCalculatorApp';
 import { CalculatorHistoryPage } from './pages/apps/CalculatorHistoryPage';
+import { XmlTreeViewerApp } from './pages/apps/XmlTreeViewerApp';
 import { QuartetClashGame } from './pages/games/QuartetClashGame';
 import { FindTheThiefGame } from './pages/games/FindTheThiefGame';
 import { WorldQuoteFooter } from './components/WorldQuoteFooter';
@@ -43,6 +44,8 @@ const AppContent: React.FC = () => {
         return <KeypadImperialCalculatorApp />;
       case 'apps-calculator-history':
         return <CalculatorHistoryPage />;
+      case 'apps-xml-tree-viewer':
+        return <XmlTreeViewerApp />;
       case 'games':
         return <GamesHubPage />;
       case 'games-quartet-clash':

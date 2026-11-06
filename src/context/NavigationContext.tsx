@@ -13,6 +13,7 @@ export type AppRoute =
   | 'apps-imperial-calculator'
   | 'apps-keypad-calculator'
   | 'apps-calculator-history'
+  | 'apps-xml-tree-viewer'
   | 'wallpapers'
   | 'blog';
 
@@ -35,6 +36,7 @@ function pathToRoute(path: string, hash: string): AppRoute {
   if (full.includes('find-the-thief')) return 'games-find-the-thief';
   if (full.includes('games')) return 'games';
 
+  if (full.includes('xml-tree') || full.includes('xml')) return 'apps-xml-tree-viewer';
   if (full.includes('pulse')) return 'apps-pulse';
   if (full.includes('transmittal-builder') || full.includes('transmittal')) return 'apps-transmittal-builder';
   if (full.includes('file-name-grabber')) return 'apps-file-name-grabber';
@@ -76,6 +78,8 @@ function routeToHash(route: AppRoute): string {
       return '#/apps/keypad-calculator';
     case 'apps-calculator-history':
       return '#/apps/calculator-history';
+    case 'apps-xml-tree-viewer':
+      return '#/apps/xml-tree-viewer';
     case 'wallpapers':
       return '#/wallpapers';
     case 'blog':

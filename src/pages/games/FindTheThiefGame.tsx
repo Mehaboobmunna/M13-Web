@@ -30,7 +30,8 @@ import {
   Brain,
   Search,
   Sparkles,
-  Flame
+  Flame,
+  ArrowLeft
 } from 'lucide-react';
 
 const EXTRA_MIDDLE_ROLES: CourtRole[] = [
@@ -472,31 +473,39 @@ export const FindTheThiefGame: React.FC = () => {
   const myRole = hierarchy.find(r => r.id === userPlayer?.roleId);
 
   return (
-    <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 flex-1 flex flex-col gap-6">
-      <header className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-amber-300 tracking-tight flex items-center gap-2">
+    <div className="max-w-6xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex-1 flex flex-col gap-4 sm:gap-6">
+      <header className="flex items-center justify-between gap-2 pb-3 sm:pb-4 border-b border-slate-800">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={() => navigate('games')}
+            className="p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl border border-slate-800 flex items-center gap-1 cursor-pointer transition"
+            title="Return to Games Hub"
+          >
+            <ArrowLeft className="w-4 h-4 text-amber-400" />
+            <span className="hidden sm:inline">Hub</span>
+          </button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <h1 className="text-lg sm:text-2xl font-black text-amber-300 tracking-tight flex items-center gap-1.5">
               <span>🕵️ Find the Thief</span>
             </h1>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">
+            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold hidden sm:inline-block">
               Matches: {metrics.findTheThiefMatches}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => setShowRules(true)}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-amber-400" /> Rules
+            <HelpCircle className="w-3.5 h-3.5 text-amber-400" /> <span className="hidden sm:inline">Rules</span>
           </button>
           <button
             onClick={() => setShowScoreboard(true)}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-medium rounded-lg border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-medium rounded-xl border border-slate-700 flex items-center gap-1 cursor-pointer"
           >
-            <Trophy className="w-3.5 h-3.5" /> Standings
+            <Trophy className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Standings</span>
           </button>
         </div>
       </header>
@@ -774,19 +783,26 @@ export const FindTheThiefGame: React.FC = () => {
           </div>
 
           {myRole && (
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 flex items-center gap-4">
-              <div className={`w-14 h-16 rounded-2xl bg-gradient-to-br ${myRole.color} border-2 ${myRole.border} flex flex-col items-center justify-center text-white shadow-lg`}>
-                <RoleIcon roleId={myRole.id} className="w-6 h-6" />
-                <span className="text-[10px] font-black uppercase mt-0.5">{myRole.name}</span>
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-13 sm:w-14 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br ${myRole.color} border-2 ${myRole.border} flex flex-col items-center justify-center text-white shadow-md shrink-0`}>
+                  <RoleIcon roleId={myRole.id} className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase mt-0.5">{myRole.name}</span>
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Your Secret Card ({aliasInput || 'Commander'})</div>
+                  <div className="text-sm sm:text-lg font-black text-white">{myRole.name} <span className="text-amber-400 text-xs sm:text-sm font-normal">({myRole.pts} pts)</span></div>
+                </div>
               </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Your Secret Card ({aliasInput || 'Commander'})</div>
-                <div className="text-lg font-black text-white">{myRole.name} (Worth {myRole.pts} pts)</div>
+              <div className="hidden sm:block text-right">
+                <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold">
+                  Keep it hidden! 🤫
+                </span>
               </div>
             </div>
           )}
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             {players.map((p) => {
               const pRole = hierarchy.find(r => r.id === p.roleId);
               const isLocked = lockedPlayerIds.includes(p.id);
@@ -801,10 +817,10 @@ export const FindTheThiefGame: React.FC = () => {
                 <div
                   key={p.id}
                   onClick={() => canBeGuessed && handleGuessPlayer(p.id, false)}
-                  className={`relative rounded-3xl p-4 border transition-all duration-500 flex flex-col justify-between min-h-[195px] overflow-hidden ${
-                    isActiveSeeker ? 'bg-gradient-to-br from-amber-950/90 via-slate-900 to-amber-950/70 border-2 border-amber-400 ring-8 ring-amber-400/30 shadow-2xl shadow-amber-500/40 scale-[1.03] z-10' :
+                  className={`relative rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border transition-all duration-300 flex flex-col justify-between min-h-[145px] sm:min-h-[195px] overflow-hidden touch-manipulation ${
+                    isActiveSeeker ? 'bg-gradient-to-br from-amber-950/90 via-slate-900 to-amber-950/70 border-2 border-amber-400 ring-4 sm:ring-8 ring-amber-400/30 shadow-2xl shadow-amber-500/40 scale-[1.02] z-10' :
                     isLocked ? 'bg-emerald-950/25 border-emerald-500/50' :
-                    canBeGuessed ? 'bg-slate-900 hover:bg-slate-800 border-pink-500/50 cursor-pointer shadow-lg' :
+                    canBeGuessed ? 'bg-slate-900 hover:bg-slate-800 border-pink-500/60 cursor-pointer shadow-lg active:scale-95' :
                     'bg-slate-900/90 border-slate-800'
                   }`}
                 >
@@ -812,46 +828,46 @@ export const FindTheThiefGame: React.FC = () => {
                     <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 animate-pulse" />
                   )}
 
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-bold text-sm text-white flex items-center gap-1.5">
-                        <span className={isActiveSeeker ? 'text-amber-300 font-black' : ''}>{displayName}</span>
-                        {isMe && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">You</span>}
+                  <div className="flex items-start justify-between gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs sm:text-sm text-white flex items-center gap-1 truncate">
+                        <span className={`truncate ${isActiveSeeker ? 'text-amber-300 font-black' : ''}`}>{displayName}</span>
+                        {isMe && <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 shrink-0">You</span>}
                       </div>
-                      <div className="text-xs text-slate-400 font-semibold mt-0.5">
-                        Score: <span className="text-amber-300 font-mono font-bold">{p.score || 0} pts</span>
+                      <div className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 truncate">
+                        Score: <span className="text-amber-300 font-mono font-bold">{p.score || 0}</span>
                       </div>
                     </div>
 
-                    {isLocked && <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold">Locked</span>}
+                    {isLocked && <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-bold shrink-0">Locked</span>}
                     {isActiveSeeker && (
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-[10px] px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black uppercase tracking-wider animate-bounce shadow-lg flex items-center gap-1">
-                          <Search className="w-3 h-3" /> Active Seeker
+                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black uppercase tracking-wider animate-bounce shadow flex items-center gap-0.5">
+                          <Search className="w-2.5 h-2.5" /> <span className="hidden sm:inline">Active</span> Seeker
                         </span>
-                        <div className="flex items-center gap-1 text-[10px] font-mono font-black text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-500/40 animate-pulse">
-                          <span>⏱️ {turnTimeLeft}s left</span>
+                        <div className="text-[9px] font-mono font-black text-amber-300 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-500/40">
+                          ⏱️ {turnTimeLeft}s
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="my-3 flex items-center justify-center">
+                  <div className="my-2 sm:my-3 flex items-center justify-center">
                     {isRoleRevealed && pRole ? (
-                      <div className={`w-full py-3 px-4 rounded-2xl bg-gradient-to-r ${pRole.color} border ${pRole.border} text-white flex items-center justify-between shadow-inner`}>
-                        <div className="flex items-center gap-2.5">
-                          <RoleIcon roleId={pRole.id} className="w-5 h-5" />
-                          <div>
-                            <div className="font-black text-sm uppercase">{pRole.name}</div>
-                            <div className="text-[11px] opacity-90">{pRole.pts} Pts</div>
+                      <div className={`w-full py-2 sm:py-3 px-2 sm:px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r ${pRole.color} border ${pRole.border} text-white flex items-center justify-between shadow-inner`}>
+                        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                          <RoleIcon roleId={pRole.id} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                          <div className="truncate">
+                            <div className="font-black text-xs sm:text-sm uppercase truncate">{pRole.name}</div>
+                            <div className="text-[10px] sm:text-[11px] opacity-90">{pRole.pts} Pts</div>
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className={`w-full py-3.5 px-4 rounded-2xl bg-slate-950 border flex items-center justify-between text-slate-400 ${canBeGuessed ? 'border-pink-500/40 bg-pink-950/10' : 'border-slate-800'}`}>
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-pink-500/15 border border-pink-500/40 text-pink-300 flex items-center justify-center font-bold">?</div>
-                          <div className="font-bold text-xs text-slate-200">Unrevealed Suspect</div>
+                      <div className={`w-full py-2.5 sm:py-3.5 px-2 sm:px-4 rounded-xl sm:rounded-2xl bg-slate-950 border flex items-center justify-between text-slate-400 ${canBeGuessed ? 'border-pink-500/40 bg-pink-950/15' : 'border-slate-800'}`}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-pink-500/15 border border-pink-500/40 text-pink-300 flex items-center justify-center font-bold text-xs sm:text-sm shrink-0">?</div>
+                          <div className="font-bold text-[11px] sm:text-xs text-slate-200 truncate">{canBeGuessed ? 'Tap to Guess' : 'Suspect'}</div>
                         </div>
                       </div>
                     )}
@@ -859,12 +875,12 @@ export const FindTheThiefGame: React.FC = () => {
 
                   <div>
                     {canBeGuessed ? (
-                      <button className="w-full py-2 px-3 rounded-xl bg-pink-500 hover:bg-pink-400 text-slate-950 font-extrabold text-xs cursor-pointer shadow">
-                        Guess as {currentTargetRole?.name}
+                      <button className="w-full py-1.5 sm:py-2 px-2 rounded-xl bg-pink-500 hover:bg-pink-400 active:bg-pink-600 text-slate-950 font-black text-[11px] sm:text-xs cursor-pointer shadow touch-manipulation truncate">
+                        🎯 Guess {currentTargetRole?.name}
                       </button>
                     ) : (
-                      <div className="text-center text-[11px] text-slate-500 py-1">
-                        {isLocked ? 'Role Confirmed' : isExcludedThisStep ? 'Ruled Out' : 'Active Court Member'}
+                      <div className="text-center text-[10px] sm:text-[11px] text-slate-500 py-0.5 truncate">
+                        {isLocked ? 'Role Confirmed' : isExcludedThisStep ? 'Ruled Out' : 'Active Court'}
                       </div>
                     )}
                   </div>

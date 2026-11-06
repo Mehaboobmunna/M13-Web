@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigation } from '../context/NavigationContext';
-import { Clock, FolderOpen, PenTool, Ruler, ArrowRight, History, FileText } from 'lucide-react';
+import { Clock, FolderOpen, PenTool, Ruler, ArrowRight, History, FileText, FileCode } from 'lucide-react';
 
 export const AppsHubPage: React.FC = () => {
   const { navigate } = useNavigation();
@@ -171,6 +171,32 @@ export const AppsHubPage: React.FC = () => {
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
               View all previous calculations from both the Handheld Keypad and Form calculators. Search equations, filter by operations (+, −, ×, ÷), copy results, and export to CSV or text tape.
+            </p>
+          </div>
+        </div>
+
+        {/* Tekla PowerFab XML Viewer Entry */}
+        <div
+          onClick={() => navigate('apps-xml-tree-viewer')}
+          className="bg-slate-800/90 border border-amber-500/40 hover:border-amber-400 rounded-xl p-5 cursor-pointer card-hover-lift transition-all flex items-start gap-4 group shadow-lg"
+        >
+          <div className="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 shrink-0 group-hover:scale-105 transition-transform">
+            <FileCode className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
+                  🏗️ Tekla PowerFab XML Viewer
+                </h2>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold font-mono">
+                  ASSEMBLY & DRAWING FOCUS
+                </span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
+            </div>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
+              Parse Tekla PowerFab & FabSuite Data Exchange XML files. Focuses on key AssemblyData and DrawingData nodes, auto-summarizes pre-depth project headers, with virtualized tree navigation and structured detail tables.
             </p>
           </div>
         </div>

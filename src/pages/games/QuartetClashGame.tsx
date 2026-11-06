@@ -50,6 +50,9 @@ import {
   Crown,
   Globe,
   User,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 const DECK_THEMES: GameTheme[] = [
@@ -325,6 +328,8 @@ export const QuartetClashGame: React.FC = () => {
 
   // Hand layout mode: 'stacked' (groups duplicate cards) vs 'spread'
   const [handViewMode, setHandViewMode] = useState<'stacked' | 'spread'>('stacked');
+  // Mobile Options Drawer Toggle
+  const [showMobileOptions, setShowMobileOptions] = useState<boolean>(false);
 
   // Cumulative Scoreboard across rounds
   const [cumulativeScores, setCumulativeScores] = useState<Record<string, number>>(() => {
@@ -1956,34 +1961,183 @@ export const QuartetClashGame: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col justify-between max-w-6xl mx-auto w-full p-3 sm:p-5 gap-4 relative select-none">
       {/* Header Bar */}
-      <header className="bg-slate-900/90 border border-emerald-900/50 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('games')}
-            className="text-slate-400 hover:text-white transition flex items-center gap-1 text-xs font-semibold cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" /> Hub
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">⚡</span>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-extrabold bg-gradient-to-r from-emerald-300 to-amber-200 bg-clip-text text-transparent">
-                  Quartet Clash
-                </h1>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">
-                  Sequential 1-by-1
-                </span>
+      <header className="bg-slate-900/90 border border-emerald-900/50 rounded-2xl p-2.5 sm:px-4 sm:py-3 flex flex-col md:flex-row md:items-center justify-between gap-2 sm:gap-3 shadow-xl backdrop-blur-md">
+        {/* Top Row on Mobile / Left Zone on Desktop */}
+        <div className="flex items-center justify-between w-full md:w-auto gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => navigate('games')}
+              className="text-slate-400 hover:text-white transition flex items-center gap-1 text-xs font-semibold cursor-pointer p-1 rounded-lg hover:bg-slate-800"
+            >
+              <ArrowLeft className="w-4 h-4" /> <span className="hidden xs:inline">Hub</span>
+            </button>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-lg sm:text-xl">⚡</span>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-xs sm:text-base font-extrabold bg-gradient-to-r from-emerald-300 to-amber-200 bg-clip-text text-transparent">
+                    Quartet Clash
+                  </h1>
+                  <span className="text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                    Pass
+                  </span>
+                </div>
+                <p className="text-[9px] sm:text-[10px] text-emerald-400/80 font-medium tracking-wide uppercase hidden xs:block">
+                  Clockwise Card Passing
+                </p>
               </div>
-              <p className="text-[10px] text-emerald-400/80 font-medium tracking-wide uppercase">
-                Single Card Clockwise Passing
-              </p>
             </div>
+          </div>
+
+          {/* Quick Mobile Utility Triggers */}
+          <div className="flex md:hidden items-center gap-1">
+            <button
+              onClick={toggleSound}
+              className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition"
+              title="Toggle Sound"
+            >
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+            </button>
+            <button
+              onClick={() => setShowScoreboard(true)}
+              className="p-1.5 rounded-lg bg-slate-800 text-sky-400 transition"
+              title="Scores"
+            >
+              <Trophy className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => startNewMatch()}
+              className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition"
+              title="Reset Match"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setShowMobileOptions(prev => !prev)}
+              className={`p-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-0.5 ${
+                showMobileOptions
+                  ? 'bg-amber-400 text-slate-950 border-amber-300'
+                  : 'bg-slate-800 text-slate-300 border-slate-700'
+              }`}
+              title="More Game Options"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              {showMobileOptions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Mobile Expandable Options Drawer */}
+        {showMobileOptions && (
+          <div className="md:hidden bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2.5 animate-fadeIn mt-1 shadow-2xl">
+            <div className="flex items-center justify-between text-xs border-b border-slate-800/80 pb-2">
+              <span className="text-slate-400 font-bold uppercase text-[10px]">Game Setup & Rules</span>
+              <button onClick={() => setShowMobileOptions(false)} className="text-slate-400 hover:text-white">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                onClick={() => setGameSpeed((prev) => (prev === 'normal' ? 'fast' : 'normal'))}
+                className={`p-2 rounded-lg border font-bold flex items-center justify-center gap-1.5 ${
+                  gameSpeed === 'fast'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-slate-900 text-slate-300 border-slate-800'
+                }`}
+              >
+                <Gauge className="w-3.5 h-3.5" />
+                <span>Speed: {gameSpeed === 'fast' ? '⚡ Fast' : 'Normal'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowStatusReports((prev) => !prev)}
+                className={`p-2 rounded-lg border font-bold flex items-center justify-center gap-1.5 ${
+                  showStatusReports
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-slate-900 text-slate-400 border-slate-800'
+                }`}
+              >
+                {showStatusReports ? <Eye className="w-3.5 h-3.5 text-emerald-400" /> : <EyeOff className="w-3.5 h-3.5" />}
+                <span>Status Bar: {showStatusReports ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              {/* Theme Selector */}
+              <div className="flex-1 relative">
+                <select
+                  value={currentThemeId}
+                  disabled={hasPassedCardInMatch}
+                  onChange={(e) => {
+                    if (!hasPassedCardInMatch) {
+                      setCurrentThemeId(e.target.value);
+                    }
+                  }}
+                  className={`w-full text-xs font-semibold px-2.5 py-2 rounded-lg border transition ${
+                    hasPassedCardInMatch
+                      ? 'bg-slate-900 text-slate-500 border-slate-800'
+                      : 'bg-slate-900 text-emerald-300 border-slate-700'
+                  }`}
+                >
+                  {DECK_THEMES.map((th) => (
+                    <option key={th.id} value={th.id}>
+                      Deck: {th.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Bot Player Adjuster */}
+              <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold shrink-0">
+                <button
+                  onClick={handleRemoveBot}
+                  disabled={tablePlayerCount <= 4 || hasPassedCardInMatch}
+                  className="p-1 text-slate-300 hover:text-white disabled:opacity-30"
+                >
+                  <UserMinus className="w-3.5 h-3.5" />
+                </button>
+                <span className="px-2 font-mono font-bold text-emerald-300 text-[11px]">
+                  {tablePlayerCount}P
+                </span>
+                <button
+                  onClick={handleAddBot}
+                  disabled={tablePlayerCount >= 6 || hasPassedCardInMatch}
+                  className="p-1 text-slate-300 hover:text-white disabled:opacity-30"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60">
+              <button
+                onClick={() => { setShowRules(true); setShowMobileOptions(false); }}
+                className="flex-1 py-1.5 rounded-lg bg-slate-900 text-slate-300 text-xs font-semibold border border-slate-800 flex items-center justify-center gap-1.5"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                <span>Rules</span>
+              </button>
+              <button
+                onClick={() => { setShowVault(true); setShowMobileOptions(false); }}
+                className="flex-1 py-1.5 rounded-lg bg-slate-900 text-amber-300 text-xs font-semibold border border-slate-800 flex items-center justify-center gap-1.5"
+              >
+                <Archive className="w-3.5 h-3.5" />
+                <span>Vault</span>
+              </button>
+              <button
+                onClick={() => setGameMode('mode_select')}
+                className="py-1.5 px-3 rounded-lg bg-slate-900 text-rose-300 text-xs font-semibold border border-slate-800 flex items-center justify-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Exit</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Controls (Unchanged on md+) */}
+        <div className="hidden md:flex items-center gap-2 flex-wrap">
           {/* Game Speed Toggle */}
           <button
             onClick={() => setGameSpeed((prev) => (prev === 'normal' ? 'fast' : 'normal'))}
@@ -2101,7 +2255,7 @@ export const QuartetClashGame: React.FC = () => {
             <span className="hidden md:inline">Vault</span>
           </button>
 
-          {/* Status Display Toggle (Renamed) */}
+          {/* Status Display Toggle */}
           <button
             onClick={() => setShowStatusReports((prev) => !prev)}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition ${
@@ -2153,39 +2307,38 @@ export const QuartetClashGame: React.FC = () => {
         </div>
       </header>
 
-      {/* Top Status & Sequential Progress Bar (Toggled by showStatusReports) */}
+      {/* Top Status & Sequential Progress Bar */}
       {showStatusReports ? (
-        <div className="bg-slate-900/85 border border-emerald-800/40 rounded-2xl p-3 shadow-lg space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center space-x-2.5 flex-wrap">
-              <div className="px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+        <div className="bg-slate-900/85 border border-emerald-800/40 rounded-2xl p-2.5 sm:p-3 shadow-lg space-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 flex-wrap">
+              <div className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] sm:text-xs font-bold">
                 Round {round}
               </div>
-              <div className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-mono font-bold flex items-center gap-1">
+              <div className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1">
                 <span>Starter:</span>
                 <span>
                   {players[(round - 1) % tablePlayerCount]?.avatar} {players[(round - 1) % tablePlayerCount]?.name}
                 </span>
               </div>
-              <div className="text-xs sm:text-sm font-semibold text-emerald-300 flex items-center gap-2">
+              <div className="text-xs sm:text-sm font-semibold text-emerald-300 flex items-center gap-1.5 truncate max-w-[200px] sm:max-w-none">
                 <span
-                  className={`w-2.5 h-2.5 rounded-full ${
+                  className={`w-2 h-2 rounded-full shrink-0 ${
                     isTransferring ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'
                   }`}
                 />
-                <span>{turnMessage}</span>
+                <span className="truncate">{turnMessage}</span>
               </div>
-              {/* Auto-pass Countdown Timer Pill */}
               {currentStep === 'user_turn' && !isTransferring && (
-                <div className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-mono font-bold flex items-center gap-1.5 animate-pulse">
-                  <Timer className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Auto-pass in {autoPassSecondsLeft}s</span>
+                <div className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1 animate-pulse">
+                  <Timer className="w-3 h-3 text-amber-400" />
+                  <span>{autoPassSecondsLeft}s left</span>
                 </div>
               )}
             </div>
 
-            {/* Dynamic Clockwise Sequential Step Badges */}
-            <div className="flex items-center gap-1 text-[11px] font-mono flex-wrap">
+            {/* Clockwise Step Badges */}
+            <div className="hidden sm:flex items-center gap-1 text-[10px] sm:text-[11px] font-mono flex-wrap">
               {Array.from({ length: tablePlayerCount }).map((_, stepIdx) => {
                 const starterIdx = (round - 1) % tablePlayerCount;
                 const from = players[(starterIdx + stepIdx) % tablePlayerCount];
@@ -2201,7 +2354,7 @@ export const QuartetClashGame: React.FC = () => {
                   <React.Fragment key={stepIdx}>
                     {stepIdx > 0 && <span className="text-slate-600">➔</span>}
                     <span
-                      className={`px-2 py-0.5 rounded-full border transition ${
+                      className={`px-1.5 py-0.5 rounded-full border transition ${
                         isStepActive
                           ? 'bg-amber-400/20 text-amber-300 border-amber-400 font-bold shadow-xs'
                           : 'bg-slate-950 text-slate-500 border-slate-800'
@@ -2216,52 +2369,42 @@ export const QuartetClashGame: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Minimal Sleek Status Bar when Reports are turned OFF */
+        /* Minimal Status Bar */
         <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs font-mono text-slate-400">
           <div className="flex items-center gap-2 truncate">
             <span className="font-bold text-amber-300">Round {round}</span>
             <span>•</span>
-            <span className="text-indigo-300">
-              Starter: {players[(round - 1) % tablePlayerCount]?.name}
-            </span>
-            <span>•</span>
             <span className="text-emerald-400 font-sans truncate">{turnMessage}</span>
             {currentStep === 'user_turn' && !isTransferring && (
-              <>
-                <span>•</span>
-                <span className="text-amber-400 font-bold animate-pulse">
-                  ⏳ {autoPassSecondsLeft}s left
-                </span>
-              </>
+              <span className="text-amber-400 font-bold animate-pulse shrink-0">
+                ⏳ {autoPassSecondsLeft}s
+              </span>
             )}
           </div>
-          <span className="text-[10px] text-slate-500 font-bold ml-2 shrink-0">
-            Display OFF
-          </span>
         </div>
       )}
 
-      {/* Opponents Area (Top Row) with Live Dynamic Card Counts (4 or 5 cards) */}
-      <div className="space-y-1.5">
+      {/* Opponents Area (Top Row Table Seating inspired by Uno Mobile) */}
+      <div className="space-y-1">
         <div className="flex items-center justify-between px-1">
-          <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
-            <span>Rival Players at Table ({tablePlayerCount - 1} Competitors)</span>
-            <span className="text-[10px] text-emerald-400 font-mono">
-              (Sequential 1-Card Pass)
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
+            <span>Rival Players ({tablePlayerCount - 1} Competitors)</span>
+            <span className="text-[9px] sm:text-[10px] text-emerald-400 font-mono hidden xs:inline">
+              (Passing Clockwise ↻)
             </span>
           </span>
-          <span className="text-[10px] text-amber-400 font-mono flex items-center gap-1">
+          <span className="text-[9px] sm:text-[10px] text-amber-400 font-mono flex items-center gap-1">
             <Clock className="w-3 h-3" /> Turn rotates clockwise
           </span>
         </div>
 
         <div
-          className={`grid gap-2.5 ${
+          className={`grid gap-1.5 sm:gap-2.5 ${
             tablePlayerCount === 4
               ? 'grid-cols-3'
               : tablePlayerCount === 5
               ? 'grid-cols-2 sm:grid-cols-4'
-              : 'grid-cols-2 sm:grid-cols-5'
+              : 'grid-cols-3 sm:grid-cols-5'
           }`}
         >
           {players.slice(1).map((bot, index) => {
@@ -2273,9 +2416,9 @@ export const QuartetClashGame: React.FC = () => {
             return (
               <div
                 key={bot.id}
-                className={`bg-slate-900/90 border rounded-xl p-3 flex flex-col items-center justify-between relative shadow-md transition-all duration-300 min-h-[155px] ${
+                className={`bg-slate-900/90 border rounded-xl p-2 sm:p-3 flex flex-col items-center justify-between relative shadow-md transition-all duration-300 min-h-[96px] sm:min-h-[145px] ${
                   isHolding5Cards
-                    ? 'border-amber-400 ring-4 ring-amber-400/40 bg-gradient-to-b from-amber-950/40 to-slate-900 scale-[1.02]'
+                    ? 'border-amber-400 ring-2 sm:ring-4 ring-amber-400/40 bg-gradient-to-b from-amber-950/40 to-slate-900 scale-[1.02]'
                     : isTargetOfTransfer
                     ? 'border-emerald-400 ring-2 ring-emerald-400/40 bg-emerald-950/20'
                     : isSenderOfTransfer
@@ -2284,38 +2427,38 @@ export const QuartetClashGame: React.FC = () => {
                 }`}
               >
                 {/* Live Card Count Pill */}
-                <div className="absolute -top-2.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase border shadow-md flex items-center gap-1">
+                <div className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase border shadow-md flex items-center gap-1">
                   {isHolding5Cards ? (
-                    <span className="bg-amber-500 text-slate-950 border border-amber-300 px-2 py-0.5 rounded-full animate-bounce">
-                      ⚡ 5 Cards in Hand (Choosing...)
+                    <span className="bg-amber-500 text-slate-950 border border-amber-300 px-1.5 py-0.2 rounded-full animate-bounce">
+                      ⚡ 5 Cards
                     </span>
                   ) : (
-                    <span className="bg-slate-800 text-slate-300 border-slate-700 px-2 py-0.5 rounded-full">
+                    <span className="bg-slate-800 text-slate-300 border-slate-700 px-1.5 py-0.2 rounded-full">
                       {botCardCount} Cards
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 mb-2 mt-1.5">
-                  <span className="text-2xl">{bot.avatar}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 mt-1">
+                  <span className="text-xl sm:text-2xl">{bot.avatar}</span>
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1 truncate max-w-[90px]">
+                    <div className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-1 truncate max-w-[65px] sm:max-w-[90px]">
                       {bot.name}
                     </div>
-                    <div className="text-[10px] text-amber-400 font-mono font-bold">
-                      {bot.score} pts total
+                    <div className="text-[9px] sm:text-[10px] text-amber-400 font-mono font-bold">
+                      {bot.score} pts
                     </div>
                   </div>
                 </div>
 
-                {/* Bot Card Backs (Shows 4 or 5 cards visually) */}
-                <div className="flex items-center -space-x-3.5 py-1">
+                {/* Bot Card Backs: Mini Uno Card Fan */}
+                <div className="flex items-center -space-x-2 sm:-space-x-3 py-0.5">
                   {bot.hand.map((card, idx) => (
                     <div
                       key={card.id || idx}
-                      className={`w-9 h-13 sm:w-10 sm:h-14 rounded-lg bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border shadow-sm flex items-center justify-center text-xs font-bold transition-transform ${
+                      className={`w-5 h-8 sm:w-9 sm:h-13 rounded sm:rounded-lg bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border shadow-sm flex items-center justify-center text-[9px] sm:text-xs font-bold transition-transform ${
                         isHolding5Cards
-                          ? 'border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                          ? 'border-amber-400 text-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.3)]'
                           : 'border-indigo-500/40 text-indigo-400/70'
                       }`}
                     >
@@ -2324,13 +2467,13 @@ export const QuartetClashGame: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Dynamic Sub-status label */}
-                <div className="text-[9px] font-mono text-slate-400 mt-1 text-center truncate max-w-full">
+                {/* Sub-status label */}
+                <div className="text-[8px] sm:text-[9px] font-mono text-slate-400 text-center truncate max-w-full">
                   {index === 0
-                    ? `From You ➔ To ${players[2]?.name || 'Next'}`
+                    ? `From You ➔ ${players[2]?.name || 'Next'}`
                     : index === players.length - 2
-                    ? `From ${players[index]?.name} ➔ To You`
-                    : `From ${players[index]?.name} ➔ To ${players[index + 2]?.name}`}
+                    ? `From ${players[index]?.name} ➔ You`
+                    : `➔ ${players[index + 2]?.name || 'Next'}`}
                 </div>
               </div>
             );
@@ -2338,76 +2481,66 @@ export const QuartetClashGame: React.FC = () => {
         </div>
       </div>
 
-      {/* Center Table Area with SECRET SINGLE-CARD In-Flight Passing Animation (Fixed Strict Height) */}
-      <div className="relative rounded-2xl bg-gradient-to-r from-slate-900/95 via-indigo-950/40 to-slate-900/95 border border-indigo-900/50 p-4 shadow-inner h-44 sm:h-48 w-full max-w-full overflow-hidden shrink-0 flex flex-col justify-center">
+      {/* Center Table Area: In-Flight Passing Animation */}
+      <div className="relative rounded-2xl bg-gradient-to-r from-slate-900/95 via-indigo-950/40 to-slate-900/95 border border-indigo-900/50 p-2.5 sm:p-4 shadow-inner h-28 sm:h-38 md:h-44 w-full max-w-full overflow-hidden shrink-0 flex flex-col justify-center">
         {activeTransfer ? (
           /* Live Secret Single Card in Motion */
-          <div className="py-2 flex flex-col items-center justify-center space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
-              <Sparkles className="w-4 h-4 animate-spin text-amber-400" />
-              <span className="uppercase tracking-widest text-[11px] font-mono">
+          <div className="py-1 flex flex-col items-center justify-center space-y-1 sm:space-y-2">
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-indigo-300">
+              <Sparkles className="w-3.5 h-3.5 animate-spin text-amber-400" />
+              <span className="uppercase tracking-widest text-[10px] sm:text-[11px] font-mono">
                 {activeTransfer.directionTitle}
               </span>
             </div>
 
-            {/* In-Flight Secret Card Banner (Face-down, identity kept completely secret) */}
-            <div className="bg-slate-950 border-2 border-indigo-500/60 rounded-2xl p-3 px-6 shadow-2xl flex items-center gap-4 animate-float-card relative overflow-hidden shadow-[0_0_25px_rgba(99,102,241,0.35)]">
+            {/* In-Flight Secret Card Banner */}
+            <div className="bg-slate-950 border-2 border-indigo-500/60 rounded-xl sm:rounded-2xl p-2 sm:p-3 px-3 sm:px-6 shadow-2xl flex items-center justify-center gap-2 sm:gap-4 animate-float-card relative overflow-hidden shadow-[0_0_20px_rgba(99,102,241,0.35)]">
               {/* Sender */}
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{activeTransfer.fromAvatar}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-xl sm:text-2xl">{activeTransfer.fromAvatar}</span>
                 <div className="text-left">
-                  <div className="text-[10px] text-slate-400 uppercase font-mono">From</div>
-                  <div className="text-xs font-bold text-white">{activeTransfer.fromName}</div>
+                  <div className="text-[9px] text-slate-400 uppercase font-mono">From</div>
+                  <div className="text-[11px] sm:text-xs font-bold text-white truncate max-w-[65px] sm:max-w-none">{activeTransfer.fromName}</div>
                 </div>
               </div>
 
-              {/* The Single Secret Card in Transit (Face-Down Mystery) */}
-              <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-indigo-950/90 via-slate-900/90 to-purple-950/90 border border-indigo-500/50 rounded-xl shadow-inner">
-                <div className="w-9 h-12 rounded-lg bg-gradient-to-br from-indigo-600 via-indigo-900 to-slate-950 border border-indigo-400/60 shadow-md flex flex-col items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff22_1px,transparent_1px)] [background-size:4px_4px] opacity-50" />
-                  <span className="text-sm">🎴</span>
+              {/* Secret Face-Down Card in Transit */}
+              <div className="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-4 py-1 sm:py-2 bg-gradient-to-r from-indigo-950/90 via-slate-900/90 to-purple-950/90 border border-indigo-500/50 rounded-lg sm:rounded-xl shadow-inner">
+                <div className="w-7 h-10 sm:w-9 sm:h-12 rounded bg-gradient-to-br from-indigo-600 via-indigo-900 to-slate-950 border border-indigo-400/60 shadow-md flex flex-col items-center justify-center relative overflow-hidden">
+                  <span className="text-xs sm:text-sm">🎴</span>
                 </div>
                 <div className="text-left">
-                  <div className="text-xs font-extrabold text-indigo-200 flex items-center gap-1.5">
+                  <div className="text-[10px] sm:text-xs font-extrabold text-indigo-200 flex items-center gap-1">
                     <span>Secret Card</span>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono border border-indigo-500/30">
-                      Face Down
-                    </span>
                   </div>
-                  <div className="text-[10px] font-mono text-slate-400">
-                    Passed secretly • Face hidden in transit
+                  <div className="text-[9px] font-mono text-slate-400 hidden xs:block">
+                    Passed secretly
                   </div>
                 </div>
               </div>
 
               {/* Arrow */}
-              <ArrowRight className="w-5 h-5 text-indigo-400 animate-pulse" />
+              <ArrowRight className="w-4 h-4 text-indigo-400 animate-pulse shrink-0" />
 
               {/* Receiver */}
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{activeTransfer.toAvatar}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-xl sm:text-2xl">{activeTransfer.toAvatar}</span>
                 <div className="text-left">
-                  <div className="text-[10px] text-slate-400 uppercase font-mono">To</div>
-                  <div className="text-xs font-bold text-emerald-300">{activeTransfer.toName}</div>
+                  <div className="text-[9px] text-slate-400 uppercase font-mono">To</div>
+                  <div className="text-[11px] sm:text-xs font-bold text-emerald-300 truncate max-w-[65px] sm:max-w-none">{activeTransfer.toName}</div>
                 </div>
               </div>
             </div>
-
-            {showStatusReports && (
-              <div className="text-[10px] font-mono text-slate-400 truncate max-w-full">
-                Cards in flight are kept secret. Receiver inspects all 5 cards and passes the one they do not want.
-              </div>
-            )}
           </div>
         ) : currentStep === 'user_turn' ? (
-          /* Normal State: User Turn Ready to Pass 1 Card */
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xl shrink-0">
+          /* User Turn Ready to Pass 1 Card */
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-lg sm:text-xl shrink-0">
                 🃏
               </div>
               <div>
-                <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2 flex-wrap">
+                <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 flex-wrap">
                   <span>
                     {selectedCardId
                       ? `Selected card ready to pass to ${players[(activePlayerIdx + 1) % tablePlayerCount]?.name || 'next player'}`
@@ -2416,13 +2549,13 @@ export const QuartetClashGame: React.FC = () => {
                       : `Choose 1 card from your hand to pass to ${players[(activePlayerIdx + 1) % tablePlayerCount]?.name || 'next player'}`}
                   </span>
                   {selectedCardId && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-mono border border-amber-400/40">
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 font-mono border border-amber-400/40">
                       Card Picked
                     </span>
                   )}
                 </div>
                 {showStatusReports && (
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap truncate max-w-full">
+                  <div className="text-[10px] sm:text-[11px] text-slate-400 hidden xs:flex items-center gap-1">
                     <span>
                       Clockwise rotation: Passing 1 card brings your hand to 4 cards.
                     </span>
@@ -2431,7 +2564,7 @@ export const QuartetClashGame: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <button
                 onClick={() => handleUserPassCard()}
                 disabled={!selectedCardId || !!resultModal}
@@ -2446,89 +2579,152 @@ export const QuartetClashGame: React.FC = () => {
           /* Bot Deciding State */
           <div className="flex flex-col items-center justify-center py-2 space-y-1 text-center">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
               <span>
-                {players[activePlayerIdx]?.avatar} {players[activePlayerIdx]?.name} is evaluating cards & choosing which to pass clockwise...
+                {players[activePlayerIdx]?.avatar} {players[activePlayerIdx]?.name} is choosing which card to pass clockwise...
               </span>
             </div>
-            {showStatusReports && (
-              <p className="text-[10px] text-slate-400 font-mono">
-                The active player discards the unwanted card secretly to bring their hand back to 4.
-              </p>
-            )}
           </div>
         )}
       </div>
 
-      {/* Player's Hand Area with Stack Same Cards Support */}
+      {/* Player's Hand Area: Uno-Inspired Tactile Card Dock */}
       {humanPlayer && (
-        <div className="bg-slate-900/90 border border-emerald-900/40 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3">
-          {/* Hand Header with Stack Toggle & Live Count */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
-            <div className="flex items-center gap-2.5">
-              <span className="text-2xl">{humanPlayer.avatar}</span>
+        <div className="bg-slate-900/90 border border-emerald-900/40 rounded-2xl p-3 sm:p-5 shadow-2xl space-y-2.5 mb-14 md:mb-0">
+          {/* Hand Header with Uno View Switcher & Live Count */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">{humanPlayer.avatar}</span>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">Your Hand</span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs sm:text-sm font-bold text-white">Your Hand</span>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-mono font-bold border ${
+                    className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-mono font-bold border ${
                       humanPlayer.hand.length === 3
                         ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                         : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                     }`}
                   >
                     {humanPlayer.hand.length === 3
-                      ? `3 Cards (1 Passed to ${players[1]?.name || 'Next'})`
+                      ? `3 Cards (Passed to ${players[1]?.name || 'Next'})`
                       : `${humanPlayer.hand.length} Cards in Hand`}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 font-mono font-bold">
-                    {humanPlayer.score} pts total
+                  <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 font-mono font-bold">
+                    {humanPlayer.score} pts
                   </span>
-                  <span className="text-[11px] text-amber-300/80 font-mono flex items-center gap-1 hidden sm:inline-flex">
-                    <MousePointer className="w-3 h-3" /> Double-click card to pass
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400">
-                  {humanPlayer.hand.length === 3
-                    ? `You started the pass! Waiting for incoming card from ${players[players.length - 1]?.name || 'Player'} to return to 4 cards.`
-                    : handViewMode === 'stacked'
-                    ? 'Cards of the same set are stacked together with progress dots towards Quartet (4-of-a-kind). Double-click to pass.'
-                    : 'Showing individual cards with uniform constant dimensions. Single-click to select, or double-click to pass immediately.'}
                 </div>
               </div>
             </div>
 
-            {/* Stacking View Switcher */}
-            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1 gap-1">
-              <button
-                onClick={() => setHandViewMode('stacked')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                  handViewMode === 'stacked'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Stack duplicate cards of the same set together"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Stacked Hand</span>
-              </button>
+            {/* View Switcher: Uno Fan (Spread) vs Stacks */}
+            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 gap-1">
               <button
                 onClick={() => setHandViewMode('spread')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
                   handViewMode === 'spread'
                     ? 'bg-emerald-500 text-slate-950 shadow-md'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Spread cards out individually"
+                title="Spread cards out in a tactile Uno card fan"
               >
-                <span>Spread Hand</span>
+                <span>🎴 Uno Fan</span>
+              </button>
+              <button
+                onClick={() => setHandViewMode('stacked')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
+                  handViewMode === 'stacked'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Stack cards of the same set together"
+              >
+                <Layers className="w-3 h-3" />
+                <span>Stacks</span>
               </button>
             </div>
           </div>
 
-          {/* VIEW 1: STACKED SAME CARDS (Physical Askew Layering) */}
-          {handViewMode === 'stacked' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 pt-3">
+          {/* VIEW 1: SPREAD VIEW (Uno-Style Card Fan Dock) */}
+          {handViewMode === 'spread' ? (
+            <div className="flex items-end justify-center -space-x-3 sm:-space-x-4 md:space-x-3 overflow-x-auto py-5 px-2 scrollbar-none touch-manipulation">
+              {humanPlayer.hand.map((card) => {
+                const isSelected = card.id === selectedCardId;
+                const isNewlyReceived = card.id === receivedCardId;
+
+                return (
+                  <div
+                    key={card.id}
+                    onClick={() => handleCardClick(card)}
+                    onDoubleClick={() => handleCardDoubleClick(card)}
+                    className={`relative p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between w-20 sm:w-32 md:w-36 h-34 sm:h-48 md:h-52 shrink-0 shadow-lg select-none touch-manipulation active:scale-95 ${
+                      isNewlyReceived ? 'animate-new-card ring-4 ring-emerald-400/50' : ''
+                    } ${
+                      isSelected
+                        ? 'border-amber-400 bg-amber-950/60 -translate-y-5 sm:-translate-y-8 ring-4 ring-amber-400/50 z-30 scale-105'
+                        : 'border-slate-700 bg-slate-950/90 hover:-translate-y-2 hover:border-emerald-500/60'
+                    }`}
+                    style={{
+                      boxShadow: isSelected ? `0 12px 28px -5px ${card.color}60` : undefined,
+                    }}
+                  >
+                    {/* Selected "Pass This" Badge (Uno style) */}
+                    {isSelected && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[9px] font-black uppercase tracking-wider shadow-md whitespace-nowrap animate-bounce">
+                        Pass This
+                      </div>
+                    )}
+
+                    {isNewlyReceived && !isSelected && (
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-1.5 py-0.2 rounded-full bg-emerald-500 text-slate-950 text-[8px] sm:text-[9px] font-black tracking-wider uppercase shadow-md flex items-center gap-0.5 whitespace-nowrap">
+                        <Sparkles className="w-2 h-2" /> From {players[players.length - 1]?.name || 'Player'}
+                      </div>
+                    )}
+
+                    {/* Top Row: Card Number and Set Dot */}
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300">
+                        #{card.numberInSet}/4
+                      </span>
+                      <span
+                        className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full shadow-xs"
+                        style={{ backgroundColor: card.color }}
+                      />
+                    </div>
+
+                    {/* Center Icon and Name */}
+                    <div className="text-center space-y-0.5 sm:space-y-1 my-auto">
+                      <div className="text-3xl sm:text-5xl">{card.icon}</div>
+                      <div className="text-xs sm:text-sm md:text-base font-black text-white tracking-wide truncate">
+                        {card.name}
+                      </div>
+                    </div>
+
+                    {/* Quartet 4-pip Progress Meter on Card */}
+                    <div className="text-center pt-1 border-t border-slate-800/80">
+                      <div className="flex items-center justify-center gap-1">
+                        {[1, 2, 3, 4].map((pip) => {
+                          const countInSet = humanPlayer.hand.filter(c => c.setId === card.setId).length;
+                          const isFilled = pip <= countInSet;
+                          return (
+                            <span
+                              key={pip}
+                              className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-colors ${
+                                isFilled
+                                  ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
+                                  : 'bg-slate-800 border border-slate-700'
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* VIEW 2: STACKED SAME CARDS (Compact for mobile) */
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-5 pt-2">
               {stackedCards.map((stack) => {
                 const isStackSelected = stack.cards.some((c) => c.id === selectedCardId);
                 const hasQuartet = stack.count === 4;
@@ -2540,12 +2736,12 @@ export const QuartetClashGame: React.FC = () => {
                     key={stack.setId}
                     onClick={() => handleStackClick(stack.cards)}
                     onDoubleClick={() => handleStackDoubleClick(stack.cards)}
-                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between h-52 sm:h-56 shadow-lg group select-none ${
+                    className={`relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between h-38 sm:h-56 shadow-lg group select-none ${
                       isStackSelected
-                        ? 'border-amber-400 bg-amber-950/40 -translate-y-3 ring-4 ring-amber-400/30'
+                        ? 'border-amber-400 bg-amber-950/40 -translate-y-2 sm:-translate-y-3 ring-4 ring-amber-400/30'
                         : hasQuartet
                         ? 'border-yellow-400 bg-yellow-950/30 ring-2 ring-yellow-400/40 animate-pulse'
-                        : 'border-slate-700 bg-slate-950/90 hover:-translate-y-1.5 hover:border-emerald-500/60'
+                        : 'border-slate-700 bg-slate-950/90 hover:-translate-y-1 hover:border-emerald-500/60'
                     }`}
                     style={{
                       zIndex: stack.count,
@@ -2554,97 +2750,66 @@ export const QuartetClashGame: React.FC = () => {
                         : undefined,
                     }}
                   >
-                    {/* Visual Askew Underlayers: Staggered fanned cards clearly displaying card count */}
+                    {/* Visual Askew Underlayers */}
                     {stack.cards.slice(0, stack.count - 1).map((underCard, cIdx) => {
                       const total = stack.count;
-                      let rot = -5;
-                      let transX = -5;
-                      const transY = (cIdx + 1) * -6;
+                      let rot = -4;
+                      let transX = -4;
+                      const transY = (cIdx + 1) * -4;
 
                       if (total === 2) {
-                        rot = -6;
-                        transX = -6;
+                        rot = -5;
+                        transX = -5;
                       } else if (total === 3) {
-                        rot = cIdx === 0 ? -8 : 6;
-                        transX = cIdx === 0 ? -7 : 7;
-                      } else if (total === 4) {
-                        rot = cIdx === 0 ? -10 : cIdx === 1 ? -4 : 6;
-                        transX = cIdx === 0 ? -9 : cIdx === 1 ? -4 : 8;
-                      } else if (total >= 5) {
-                        rot = (cIdx - 2) * 4;
-                        transX = (cIdx - 2) * 6;
+                        rot = cIdx === 0 ? -6 : 5;
+                        transX = cIdx === 0 ? -5 : 5;
+                      } else if (total >= 4) {
+                        rot = cIdx === 0 ? -7 : cIdx === 1 ? -3 : 5;
+                        transX = cIdx === 0 ? -6 : cIdx === 1 ? -3 : 6;
                       }
 
                       return (
                         <div
                           key={underCard.id || cIdx}
-                          className="absolute inset-0 rounded-2xl border-2 bg-slate-950 shadow-md pointer-events-none transition-all duration-300 group-hover:scale-[1.03]"
+                          className="absolute inset-0 rounded-xl sm:rounded-2xl border-2 bg-slate-950 shadow-md pointer-events-none transition-all duration-300"
                           style={{
                             transform: `translate(${transX}px, ${transY}px) rotate(${rot}deg)`,
                             borderColor: `${stack.color}55`,
                             zIndex: cIdx - 10,
                           }}
-                        >
-                          {/* Visible top label on askew card */}
-                          <div className="flex justify-between items-center p-2 opacity-85">
-                            <span className="text-[9px] font-mono font-bold text-slate-300 bg-slate-900/90 px-1.5 py-0.2 rounded border border-slate-700">
-                              #{underCard.numberInSet}/4
-                            </span>
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: stack.color }}
-                            />
-                          </div>
-                        </div>
+                        />
                       );
                     })}
 
-                    {/* Top Row: Stack Count Badge & Quartet Status */}
+                    {/* Top Row: Stack Count Badge */}
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-xs font-black px-2.5 py-0.5 rounded-full border shadow-sm flex items-center gap-1 ${
-                            hasQuartet
-                              ? 'bg-amber-400 text-slate-950 border-amber-300 font-extrabold'
-                              : isOneAway
-                              ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
-                              : hasPair
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                              : 'bg-slate-900 text-slate-300 border-slate-700'
-                          }`}
-                        >
-                          {isOneAway && <Flame className="w-3 h-3 text-orange-400" />}
-                          {hasQuartet && <Trophy className="w-3 h-3 text-slate-950" />}
-                          <span>{stack.count}x Stack</span>
-                        </span>
-                      </div>
+                      <span
+                        className={`text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full border shadow-sm flex items-center gap-1 ${
+                          hasQuartet
+                            ? 'bg-amber-400 text-slate-950 border-amber-300'
+                            : isOneAway
+                            ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                            : hasPair
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            : 'bg-slate-900 text-slate-300 border-slate-700'
+                        }`}
+                      >
+                        {isOneAway && <Flame className="w-2.5 h-2.5 text-orange-400" />}
+                        {hasQuartet && <Trophy className="w-2.5 h-2.5 text-slate-950" />}
+                        <span>{stack.count}x Stack</span>
+                      </span>
 
                       <span
-                        className="w-3.5 h-3.5 rounded-full shadow-sm"
+                        className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full shadow-sm"
                         style={{ backgroundColor: stack.color }}
                       />
                     </div>
 
                     {/* Center Icon & Name */}
-                    <div className="text-center space-y-1 my-auto">
-                      <div className="text-4xl sm:text-5xl transition-transform group-hover:scale-105">
-                        {stack.icon}
-                      </div>
-                      <div className="text-sm sm:text-base font-black text-white tracking-wide">
+                    <div className="text-center space-y-0.5 my-auto">
+                      <div className="text-3xl sm:text-5xl">{stack.icon}</div>
+                      <div className="text-xs sm:text-base font-black text-white tracking-wide truncate">
                         {stack.name}
-                      </div>
-
-                      {/* Visible Card Tags showing all cards present in the stack */}
-                      <div className="flex items-center justify-center gap-1 pt-1 flex-wrap">
-                        {stack.cards.map((c, idx) => (
-                          <span
-                            key={c.id || idx}
-                            className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-900 border border-slate-700 text-slate-300"
-                            title={`Card #${c.numberInSet}/4 of ${c.name}`}
-                          >
-                            #{c.numberInSet}
-                          </span>
-                        ))}
                       </div>
 
                       {/* Quartet 4-pip Progress Bar */}
@@ -2652,9 +2817,9 @@ export const QuartetClashGame: React.FC = () => {
                         {[1, 2, 3, 4].map((pip) => (
                           <span
                             key={pip}
-                            className={`w-2 h-2 rounded-full transition-colors ${
+                            className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-colors ${
                               pip <= stack.count
-                                ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                                ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]'
                                 : 'bg-slate-800 border border-slate-700'
                             }`}
                           />
@@ -2662,21 +2827,21 @@ export const QuartetClashGame: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Stack Bottom Status / Pass Selector */}
-                    <div className="text-center pt-2 border-t border-slate-800/80">
+                    {/* Bottom Status */}
+                    <div className="text-center pt-1 border-t border-slate-800/80">
                       {isStackSelected ? (
-                        <span className="text-[10px] font-bold text-amber-300 font-mono tracking-wider flex items-center justify-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Selected 1 to Pass
+                        <span className="text-[9px] sm:text-[10px] font-bold text-amber-300 font-mono tracking-wider flex items-center justify-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> Picked 1
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-mono tracking-wider">
+                        <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono truncate block">
                           {hasQuartet
-                            ? '🎉 Complete 4-of-4 (100 pts)'
+                            ? '🎉 Quartet!'
                             : isOneAway
-                            ? '🔥 1 to Quartet (75 pts)'
+                            ? '🔥 1 to Win'
                             : stack.count === 2
-                            ? 'Pair (50 pts)'
-                            : 'Single (0 pts)'}
+                            ? 'Pair'
+                            : 'Single'}
                         </span>
                       )}
                     </div>
@@ -2684,60 +2849,25 @@ export const QuartetClashGame: React.FC = () => {
                 );
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Floating Mobile Thumb-Zone Pass Bar (Uno Inspired) */}
+      {currentStep === 'user_turn' && !resultModal && (
+        <div className="fixed bottom-3 left-3 right-3 z-40 md:hidden animate-fadeIn">
+          {selectedCardId ? (
+            <button
+              onClick={() => handleUserPassCard()}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl shadow-amber-400/40 flex items-center justify-center gap-2 border border-white/60 active:scale-95 transition-transform cursor-pointer"
+            >
+              <span>Pass {humanPlayer?.hand.find(c => c.id === selectedCardId)?.name || 'Card'} to {players[(activePlayerIdx + 1) % tablePlayerCount]?.name}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           ) : (
-            /* VIEW 2: SPREAD VIEW (Strict Constant Card Sizes at all times during play) */
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 pt-1">
-              {humanPlayer.hand.map((card) => {
-                const isSelected = card.id === selectedCardId;
-                const isNewlyReceived = card.id === receivedCardId;
-
-                return (
-                  <div
-                    key={card.id}
-                    onClick={() => handleCardClick(card)}
-                    onDoubleClick={() => handleCardDoubleClick(card)}
-                    className={`relative p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between w-32 sm:w-36 h-48 sm:h-52 shrink-0 shadow-lg select-none ${
-                      isNewlyReceived ? 'animate-new-card ring-4 ring-emerald-400/50' : ''
-                    } ${
-                      isSelected
-                        ? 'border-amber-400 bg-amber-950/40 -translate-y-3 ring-4 ring-amber-400/30'
-                        : 'border-slate-700 bg-slate-950/80 hover:-translate-y-1 hover:border-emerald-500/60'
-                    }`}
-                    style={{
-                      boxShadow: isSelected ? `0 10px 25px -5px ${card.color}40` : undefined,
-                    }}
-                  >
-                    {isNewlyReceived && (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[9px] font-black tracking-wider uppercase shadow-md flex items-center gap-1 whitespace-nowrap">
-                        <Sparkles className="w-2.5 h-2.5" /> From {players[players.length - 1]?.name || 'Player'}
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300">
-                        #{card.numberInSet}/4
-                      </span>
-                      <span
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: card.color }}
-                      />
-                    </div>
-
-                    <div className="text-center space-y-1">
-                      <div className="text-4xl sm:text-5xl">{card.icon}</div>
-                      <div className="text-sm sm:text-base font-black text-white tracking-wide">
-                        {card.name}
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">
-                        Set: {card.setId}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="w-full py-2.5 px-4 rounded-xl bg-slate-900/95 border border-amber-500/40 text-amber-300 font-bold text-xs text-center backdrop-blur-md shadow-xl flex items-center justify-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span>Tap a card in your hand to pass clockwise</span>
             </div>
           )}
         </div>
